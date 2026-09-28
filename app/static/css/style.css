@@ -35,18 +35,52 @@ body {
     letter-spacing: 0.02em;
 }
 
-/* 4. 상단 네비게이션 바 커스텀 */
+/* 4. 상단 네비게이션 바 커스텀 (제일 상단 배너: 배경 연두색, VIBE FASHION 글씨 분홍색) */
 .navbar {
-    background-color: var(--brand-navy) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, #d4f8a8 0%, #b8f080 50%, #9eed5c 100%) !important;
+    border-bottom: 2px solid #88db42 !important;
+    box-shadow: 0 4px 16px rgba(136, 219, 66, 0.25) !important;
+}
+
+/* 상단 제일 위 VIBE FASHION 로고 글씨: 화사한 분홍색(Pink) */
+.navbar-brand {
+    color: #ff2d87 !important;
+    font-family: 'Playfair Display', 'Noto Sans KR', serif;
+    font-weight: 900 !important;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 8px rgba(255, 45, 135, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.navbar-brand:hover {
+    color: #e0186e !important;
+    transform: scale(1.03);
 }
 
 .navbar-brand i {
-    color: var(--brand-coral) !important;
+    color: #ff2d87 !important;
 }
 
-.nav-link:hover,
-.nav-link.active {
+/* 상단 메뉴 링크 텍스트: 연두색 배경에 맞춰 딥 네이비 톤으로 선명하게 */
+.navbar .nav-link {
+    color: #1a2a4a !important;
+    font-weight: 600;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+    color: #ff2d87 !important;
+}
+
+/* 상단 네비 바 버튼들 스타일 조화 */
+.navbar .btn-outline-light {
+    border-color: #1a2a4a !important;
+    color: #1a2a4a !important;
+    font-weight: 600;
+}
+
+.navbar .btn-outline-light:hover {
+    background-color: #1a2a4a !important;
     color: #ffffff !important;
 }
 
