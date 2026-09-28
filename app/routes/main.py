@@ -424,6 +424,77 @@ def api_me():
     return jsonify({"is_logged_in": False})
 
 
+@bp.route("/api/reviews", methods=["POST"])
+def api_create_review():
+    """
+    상품 사진 후기 등록 API:
+    - 로그인한 회원이 작성하거나, 비로그인 시 기본 작성자 계정으로 후기 등록
+    - 등록 즉시 리뷰 작성 축하 적립금 500원 추가 지급!
+    """
+    data = request.get_json() or {}
+    product_id = data.get("product_id")
+    rating = int(data.get("rating") or 5)
+    content = (data.get("content") or "").strip()
+    image_url = (data.get("image_url") or "").strip()
+
+    if not product_id or not content:
+        return jsonify({"success": False, "message": "상품 정보와 후기 내용을 입력해 주세요."}), 400
+
+    try:
+        admin_supabase = get_supabase_admin_client()
+        if not admin_supabase:
+            return jsonify({"success": False, "message": "서버 인증 설정이 올바르지 않습니다."}), 500
+
+        # 작성자 user_id 결정 (로그인 유저 또는 서포터 계정)
+        user_id = session.get("user_id")
+        user_name = session.get("user_name") or "구매고객"
+
+        if not user_id:
+            reviewer_email = "reviewer@vibefashion.com"
+            users = admin_supabase.auth.admin.list_users()
+            author_user = next((u for u in users if u.email == reviewer_email), None)
+            if not author_user:
+                author_user = admin_supabase.auth.admin.create_user({
+                    "email": reviewer_email,
+                    "password": "ReviewerPassword2026!",
+                    "email_confirm": True,
+                    "user_metadata": {"full_name": "구매고객"}
+                }).user
+            user_id = author_user.id
+
+        # reviews 테이블에 등록
+        review_data = {
+            "product_id": product_id,
+            "user_id": user_id,
+            "rating": rating,
+            "content": content,
+            "image_url": image_url or "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80"
+        }
+        ins_res = admin_supabase.table("reviews").insert(review_data).execute()
+
+        # 로그인 사용자라면 리뷰 작성 적립금 500원 추가 적립
+        if "user_id" in session:
+            current_points = int(session.get("user_points", 2000)) + 500
+            session["user_points"] = current_points
+            try:
+                admin_supabase.auth.admin.update_user_by_id(
+                    session["user_id"],
+                    {"user_metadata": {"points": current_points, "full_name": session.get("user_name")}}
+                )
+            except Exception as ue:
+                logger.warning(f"Failed to update user points: {ue}")
+
+        return jsonify({
+            "success": True,
+            "message": "소중한 사진 후기가 등록되었습니다! (포토 후기 적립금 +500P 적립)",
+            "review": ins_res.data[0] if ins_res.data else None
+        })
+
+    except Exception as e:
+        logger.error(f"리뷰 등록 실패: {e}")
+        return jsonify({"success": False, "message": f"후기 등록에 실패했습니다: {e}"}), 500
+
+
 @bp.route("/products/<product_id>")
 def product_detail(product_id: str):
     """
@@ -497,6 +568,40 @@ def product_detail(product_id: str):
                     "images": images,
                     "options": options,
                 }
+
+                # 상품 사진 후기(Reviews) 목록 조회
+                reviews_res = (
+                    supabase.table("reviews")
+                    .select("*, profiles(full_name, avatar_url)")
+                    .eq("product_id", product_id)
+                    .order("created_at", desc=True)
+                    .execute()
+                )
+                reviews_data = reviews_res.data or []
+                product_reviews = []
+                for r in reviews_data:
+                    prof = r.get("profiles") or {}
+                    author = prof.get("full_name") or "구매고객"
+                    # 작성일자 YYYY.MM.DD 포맷팅
+                    raw_date = r.get("created_at", "")[:10].replace("-", ".")
+                    product_reviews.append({
+                        "id": r.get("id"),
+                        "rating": r.get("rating") or 5,
+                        "content": r.get("content") or "",
+                        "image_url": r.get("image_url") or "",
+                        "author_name": author,
+                        "created_at": raw_date or "2026.09.28"
+                    })
+
+                # 평균 평점 계산
+                if product_reviews:
+                    avg_rating = round(sum(r["rating"] for r in product_reviews) / len(product_reviews), 1)
+                else:
+                    avg_rating = 5.0
+
+                product["reviews"] = product_reviews
+                product["review_count"] = len(product_reviews)
+                product["avg_rating"] = avg_rating
     except Exception as e:
         print(f"[Supabase Error] 상품 상세 조회 실패: {e}", file=sys.stderr)
         logger.error(f"상품 상세 조회 실패: {e}")

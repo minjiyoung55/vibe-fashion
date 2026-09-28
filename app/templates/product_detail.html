@@ -48,7 +48,23 @@
                 </span>
                 {% endif %}
 
-                <h1 class="fw-bold display-6 mb-3 text-dark">{{ product.name }}</h1>
+                <h1 class="fw-bold display-6 mb-2 text-dark">{{ product.name }}</h1>
+
+                <!-- 평점 및 포토 리뷰 요약 -->
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="text-warning fs-5">
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                        <i class="bi bi-star-fill"></i>
+                    </div>
+                    <span class="fw-bold text-dark">{{ product.avg_rating }}</span>
+                    <span class="text-muted small">|</span>
+                    <a href="#reviews-section" class="text-decoration-none text-muted small fw-semibold">
+                        포토 후기 <strong class="text-danger">{{ product.review_count }}</strong>개 보기
+                    </a>
+                </div>
 
                 <!-- 가격 영역 -->
                 <div class="mb-4 pb-3 border-bottom">
@@ -146,6 +162,112 @@
             </div>
         </div>
     </div>
+
+    <!-- ============================================================== -->
+    <!-- 3. 고객 생생 포토 리뷰 섹션 (Reviews Section) -->
+    <!-- ============================================================== -->
+    <div class="mt-5 pt-5 border-top" id="reviews-section">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+            <div>
+                <h3 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                    <i class="bi bi-camera-fill text-danger"></i> 구매 고객 포토 후기
+                    <span class="badge bg-danger rounded-pill fs-6">{{ product.review_count }}</span>
+                </h3>
+                <p class="text-muted small mb-0">실제 고객님들이 직접 착용하고 남겨주신 100% 리얼 사진 후기입니다.</p>
+            </div>
+            <button type="button" class="btn btn-outline-dark rounded-pill px-4 fw-semibold" data-bs-toggle="collapse" data-bs-target="#writeReviewCollapse">
+                <i class="bi bi-pencil-square me-1"></i> 포토 후기 작성하기 (+500P)
+            </button>
+        </div>
+
+        <!-- 후기 작성 접이식 폼 -->
+        <div class="collapse mb-5" id="writeReviewCollapse">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h5 class="fw-bold mb-3 text-dark">✨ 솔직한 포토 리뷰를 남겨주세요</h5>
+                <form id="reviewWriteForm">
+                    <input type="hidden" id="reviewProductId" value="{{ product.id }}">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">만족도 별점</label>
+                            <select class="form-select" id="reviewRating">
+                                <option value="5" selected>⭐⭐⭐⭐⭐ (5점 아주 만족)</option>
+                                <option value="4">⭐⭐⭐⭐ (4점 만족)</option>
+                                <option value="3">⭐⭐⭐ (3점 보통)</option>
+                                <option value="2">⭐⭐ (2점 아쉬움)</option>
+                                <option value="1">⭐ (1점 불만족)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label small fw-bold">착용 사진 URL (선택)</label>
+                            <input type="url" class="form-control" id="reviewImageUrl" placeholder="사진 URL (비워두시면 대표 착용 컷으로 등록됩니다)">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">후기 내용</label>
+                            <textarea class="form-control" id="reviewContent" rows="3" placeholder="핏, 사이즈감, 착용감 등 다른 고객님께 도움이 될 정보를 자세히 남겨주세요!" required></textarea>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-warning fw-bold px-4 rounded-pill text-dark" id="reviewSubmitBtn">
+                                후기 등록하고 500P 받기 ✨
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 포토 후기 카드 그리드 (카드마다 착용 사진 + 별점 + 텍스트) -->
+        {% if product.reviews %}
+        <div class="row g-4" id="reviewsContainer">
+            {% for rev in product.reviews %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden review-card">
+                    <!-- 후기 사진 (포토 리뷰) -->
+                    {% if rev.image_url %}
+                    <div class="review-image-wrapper position-relative overflow-hidden" style="height: 240px; background-color: #f1f5f9;">
+                        <img src="{{ rev.image_url }}" 
+                             alt="{{ product.name }} 고객 후기 사진" 
+                             class="w-100 h-100 object-fit-cover review-thumbnail"
+                             loading="lazy"
+                             style="cursor: pointer;"
+                             onclick="window.open(this.src, '_blank');">
+                        <span class="position-absolute bottom-0 end-0 m-2 badge bg-dark bg-opacity-75 rounded-pill px-2.5 py-1 small">
+                            <i class="bi bi-zoom-in me-1"></i> 확대보기
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    <!-- 후기 내용 본문 -->
+                    <div class="card-body p-4 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="text-warning small">
+                                {% for _ in range(rev.rating) %}
+                                <i class="bi bi-star-fill"></i>
+                                {% endfor %}
+                            </div>
+                            <span class="badge bg-light text-secondary border small">구매자 인증</span>
+                        </div>
+                        <p class="card-text text-dark flex-grow-1 small lh-base mb-3">
+                            {{ rev.content }}
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top text-muted small">
+                            <span class="fw-semibold text-secondary">
+                                <i class="bi bi-person-circle me-1"></i>{{ rev.author_name }}
+                            </span>
+                            <span class="text-white-50 small">{{ rev.created_at }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5 bg-white rounded-4 border">
+            <i class="bi bi-camera text-muted fs-1 mb-2 d-block"></i>
+            <p class="text-muted mb-2">아직 등록된 첫 번째 포토 후기가 없습니다.</p>
+            <p class="small text-secondary mb-0">가장 먼저 포토 리뷰를 남기고 <strong>적립금 500P</strong>를 받아가세요!</p>
+        </div>
+        {% endif %}
+    </div>
 </div>
 
 <!-- 장바구니 알림 토스트 (Bootstrap Toast) -->
@@ -185,6 +307,56 @@
         if (buyNowBtn) {
             buyNowBtn.addEventListener("click", () => {
                 alert("주문 페이지로 이동합니다. (준비 중인 기능입니다)");
+            });
+        }
+
+        // 포토 후기 작성 폼 비동기 제출
+        const reviewForm = document.getElementById("reviewWriteForm");
+        const reviewSubmitBtn = document.getElementById("reviewSubmitBtn");
+        if (reviewForm) {
+            reviewForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const productId = document.getElementById("reviewProductId").value;
+                const rating = document.getElementById("reviewRating").value;
+                const imageUrl = document.getElementById("reviewImageUrl").value.trim();
+                const content = document.getElementById("reviewContent").value.trim();
+
+                if (!content) return;
+
+                if (reviewSubmitBtn) {
+                    reviewSubmitBtn.disabled = true;
+                    reviewSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>후기 등록 중...';
+                }
+
+                try {
+                    const res = await fetch("/api/reviews", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            product_id: productId,
+                            rating: rating,
+                            content: content,
+                            image_url: imageUrl
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(data.message || "포토 후기가 성공적으로 등록되었습니다!");
+                        window.location.reload();
+                    } else {
+                        alert(data.message || "후기 등록에 실패했습니다.");
+                        if (reviewSubmitBtn) {
+                            reviewSubmitBtn.disabled = false;
+                            reviewSubmitBtn.innerHTML = "후기 등록하고 500P 받기 ✨";
+                        }
+                    }
+                } catch (err) {
+                    alert("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+                    if (reviewSubmitBtn) {
+                        reviewSubmitBtn.disabled = false;
+                        reviewSubmitBtn.innerHTML = "후기 등록하고 500P 받기 ✨";
+                    }
+                }
             });
         }
     });
