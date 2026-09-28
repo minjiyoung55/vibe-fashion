@@ -50,13 +50,14 @@ body {
     color: #ffffff !important;
 }
 
-/* 5. 히어로 섹션 (Hero Section) */
+/* 5. 히어로 섹션 (Hero Section) - 연두색 배경 & 분홍색 VIBE FASHION 포인트 */
 .hero-section {
-    /* 네이비(#1a2a4a)에서 검은색(#0a0d14)으로 떨어지는 세련된 그라디언트 */
-    background: linear-gradient(180deg, var(--brand-navy) 0%, #0d1524 60%, #05080f 100%) !important;
+    /* 트렌디하고 화사한 연두색 그라디언트 배경 */
+    background: linear-gradient(135deg, #e8fcd9 0%, #cbf3a1 50%, #b4ec84 100%) !important;
     padding-top: 5rem !important;
     padding-bottom: 5.5rem !important;
     text-align: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* 히어로 내부 텍스트 및 버튼들을 중앙 정렬 구조로 재구성 */
@@ -72,46 +73,44 @@ body {
 }
 
 /* 컬렉션 뱃지 */
-.hero-section .badge {
-    background-color: rgba(255, 107, 91, 0.18) !important;
-    color: #ff9d93 !important;
-    border: 1px solid rgba(255, 107, 91, 0.35);
-    font-weight: 600;
+.hero-section .hero-badge {
+    background-color: rgba(26, 42, 74, 0.08) !important;
+    color: #1a2a4a !important;
+    border: 1px solid rgba(26, 42, 74, 0.2);
+    font-weight: 700;
     font-size: 0.85rem;
     letter-spacing: 0.08em;
 }
 
-/* 슬로건 텍스트 스타일링: "당신의 일상을 스타일리시하게" 중앙 배치 */
-.hero-section h1 {
-    font-size: 0 !important;
-    line-height: 1.25;
-    margin-bottom: 1.25rem;
-    height: auto;
-}
-
-.hero-section h1::before {
-    content: "당신의 일상을 스타일리시하게";
+/* 메인 타이틀 */
+.hero-title {
     font-size: clamp(2rem, 4.5vw, 3.25rem) !important;
     font-family: 'Noto Sans KR', sans-serif;
     font-weight: 800;
-    color: #ffffff;
-    display: block;
+    color: #1a2a4a !important;
+    line-height: 1.25;
+    margin-bottom: 1.25rem;
     letter-spacing: -0.03em;
-    margin-bottom: 0.5rem;
 }
 
-/* 기존 h1 내부 요소 및 텍스트 노드 은닉 */
-.hero-section h1 * {
-    display: none !important;
+/* VIBE FASHION 글씨: 사랑스럽고 선명한 분홍색(Pink) */
+.hero-brand-name {
+    color: #ff2d87 !important; /* 화사한 분홍색 포인트 */
+    font-family: 'Playfair Display', 'Noto Sans KR', serif;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    display: inline-block;
+    text-shadow: 0 4px 14px rgba(255, 45, 135, 0.25);
 }
 
-.hero-section .lead {
-    font-size: 1.05rem;
-    color: #cbd5e1 !important;
+.hero-lead {
+    font-size: 1.08rem;
+    color: #334155 !important;
     margin-left: auto;
     margin-right: auto;
     padding-right: 0 !important;
     max-width: 620px;
+    font-weight: 500;
 }
 
 /* CTA 버튼 중앙 정렬 컨테이너 */
@@ -120,47 +119,36 @@ body {
     margin-top: 2rem;
 }
 
-/* '지금 쇼핑하기' CTA 버튼 (코랄 컬러) */
-.hero-section .btn-warning {
-    background-color: var(--brand-coral) !important;
-    border-color: var(--brand-coral) !important;
-    font-weight: 600;
-    padding: 0.85rem 2.2rem;
-    border-radius: 50px;
-    box-shadow: 0 8px 20px rgba(255, 107, 91, 0.35) !important;
-    transition: all 0.25s ease;
-    font-size: 0 !important; /* 내부 텍스트 0 */
-}
-
-.hero-section .btn-warning::before {
-    content: "지금 쇼핑하기";
-    font-size: 1rem !important;
-    color: #ffffff;
+/* '지금 쇼핑하기' CTA 버튼 */
+.hero-shop-btn {
+    background-color: #1a2a4a !important;
+    border-color: #1a2a4a !important;
+    color: #ffffff !important;
     font-weight: 700;
+    padding: 0.85rem 2.2rem;
+    box-shadow: 0 8px 20px rgba(26, 42, 74, 0.25) !important;
+    transition: all 0.25s ease;
 }
 
-.hero-section .btn-warning * {
-    display: none !important;
-}
-
-.hero-section .btn-warning:hover {
-    background-color: var(--brand-coral-hover) !important;
-    border-color: var(--brand-coral-hover) !important;
+.hero-shop-btn:hover {
+    background-color: #ff2d87 !important;
+    border-color: #ff2d87 !important;
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(255, 107, 91, 0.45) !important;
+    box-shadow: 0 12px 24px rgba(255, 45, 135, 0.35) !important;
 }
 
-.hero-section .btn-outline-light {
+.hero-section .btn-outline-dark {
     border-radius: 50px;
     padding: 0.85rem 1.8rem;
     font-size: 1rem;
-    border-color: rgba(255, 255, 255, 0.35);
+    border-color: #1a2a4a;
+    color: #1a2a4a;
     transition: all 0.25s ease;
 }
 
-.hero-section .btn-outline-light:hover {
-    background-color: rgba(255, 255, 255, 0.12);
-    border-color: #ffffff;
+.hero-section .btn-outline-dark:hover {
+    background-color: rgba(26, 42, 74, 0.08);
+    border-color: #1a2a4a;
 }
 
 /* 히어로 배너 이미지 영역 숨김 처리하여 중앙 텍스트 집중 */
