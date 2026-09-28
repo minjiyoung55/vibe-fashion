@@ -151,4 +151,131 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
+    // ==============================================================
+    // 6. 회원가입 & 로그인 (적립금 2,000원 지급) 모달 제어
+    // ==============================================================
+    const authModalEl = document.getElementById("authModal");
+    const signupForm = document.getElementById("signupForm");
+    const loginForm = document.getElementById("loginForm");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const signupSubmitBtn = document.getElementById("signupSubmitBtn");
+    const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+
+    // 모달 탭 열릴 때 data-tab 속성에 따라 회원가입/로그인 탭 활성화
+    if (authModalEl) {
+        authModalEl.addEventListener("show.bs.modal", (event) => {
+            const button = event.relatedTarget;
+            if (button) {
+                const targetTab = button.getAttribute("data-tab");
+                if (targetTab === "login") {
+                    const loginTabBtn = document.getElementById("tab-login-btn");
+                    if (loginTabBtn && window.bootstrap) {
+                        const tab = new bootstrap.Tab(loginTabBtn);
+                        tab.show();
+                    }
+                } else {
+                    const signupTabBtn = document.getElementById("tab-signup-btn");
+                    if (signupTabBtn && window.bootstrap) {
+                        const tab = new bootstrap.Tab(signupTabBtn);
+                        tab.show();
+                    }
+                }
+            }
+        });
+    }
+
+    // 회원가입 폼 전송
+    if (signupForm) {
+        signupForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const full_name = document.getElementById("signupName").value.trim();
+            const email = document.getElementById("signupEmail").value.trim();
+            const password = document.getElementById("signupPassword").value.trim();
+
+            if (!email || !password) return;
+
+            if (signupSubmitBtn) {
+                signupSubmitBtn.disabled = true;
+                signupSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>적립금 2,000원 지급 중...';
+            }
+
+            try {
+                const res = await fetch("/api/signup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password, full_name })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`🎉 축하합니다!\n\n회원가입이 완료되어 축하 적립금 ${Number(data.points).toLocaleString()}원이 즉시 지급되었습니다! 🛍️`);
+                    window.location.reload();
+                } else {
+                    alert(data.message || "회원가입에 실패했습니다.");
+                    if (signupSubmitBtn) {
+                        signupSubmitBtn.disabled = false;
+                        signupSubmitBtn.innerHTML = "2,000원 적립금 받고 가입하기 ✨";
+                    }
+                }
+            } catch (err) {
+                alert("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+                if (signupSubmitBtn) {
+                    signupSubmitBtn.disabled = false;
+                    signupSubmitBtn.innerHTML = "2,000원 적립금 받고 가입하기 ✨";
+                }
+            }
+        });
+    }
+
+    // 로그인 폼 전송
+    if (loginForm) {
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("loginEmail").value.trim();
+            const password = document.getElementById("loginPassword").value.trim();
+
+            if (!email || !password) return;
+
+            if (loginSubmitBtn) {
+                loginSubmitBtn.disabled = true;
+                loginSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>로그인 중...';
+            }
+
+            try {
+                const res = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert(data.message || "로그인에 실패했습니다.");
+                    if (loginSubmitBtn) {
+                        loginSubmitBtn.disabled = false;
+                        loginSubmitBtn.innerHTML = "로그인";
+                    }
+                }
+            } catch (err) {
+                alert("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+                if (loginSubmitBtn) {
+                    loginSubmitBtn.disabled = false;
+                    loginSubmitBtn.innerHTML = "로그인";
+                }
+            }
+        });
+    }
+
+    // 로그아웃 버튼
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", async () => {
+            if (confirm("로그아웃 하시겠습니까?")) {
+                await fetch("/api/logout", { method: "POST" });
+                window.location.reload();
+            }
+        });
+    }
 });

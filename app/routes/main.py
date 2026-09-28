@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
@@ -33,6 +33,24 @@ def get_supabase_client() -> Client | None:
     except Exception as e:
         print(f"[Supabase Error] Supabase 클라이언트 연결 실패: {e}", file=sys.stderr)
         logger.error(f"Supabase 클라이언트 생성 실패: {e}")
+        return None
+
+
+def get_supabase_admin_client() -> Client | None:
+    """
+    .env 환경 변수(SUPABASE_URL, SUPABASE_SERVICE_KEY)를 읽어
+    회원 생성 및 관리자 권한용 supabase-py 클라이언트를 초기화합니다.
+    """
+    supabase_url = os.getenv("SUPABASE_URL")
+    service_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+    if not supabase_url or not service_key:
+        return None
+
+    try:
+        return create_client(supabase_url, service_key)
+    except Exception as e:
+        logger.error(f"Supabase Admin 클라이언트 생성 실패: {e}")
         return None
 
 
@@ -228,22 +246,180 @@ def chat_api():
             "- 이메일: support@vibefashion.com"
         )
     # 6. 할인 / 쿠폰 / 이벤트 문의
-    elif any(k in msg_lower for k in ["할인", "쿠폰", "이벤트", "적립금", "세일"]):
+    elif any(k in msg_lower for k in ["할인", "쿠폰", "이벤트", "적립금", "포인트", "세일", "회원가입"]):
         reply = (
-            "🎁 **할인 및 이벤트 혜택 안내입니다!**\n"
-            "- 신규 회원 가입 시 즉시 사용 가능한 **10% 할인 쿠폰**을 드립니다.\n"
-            "- 이달의 추천 아이템 컬렉션에서 최대 33% 할인된 특가 상품들을 만나보세요!"
+            "🎁 **회원가입 특별 혜택 안내입니다!**\n"
+            "- 지금 무료 회원가입을 하시면 **적립금 2,000원**을 즉시 지급해 드립니다!\n"
+            "- 상단 [회원가입] 버튼을 눌러 이메일과 비밀번호만 입력하면 3초 만에 가입 완료!\n"
+            "- 이달의 추천 아이템 컬렉션에서 적립금과 함께 알뜰하게 쇼핑해 보세요."
         )
     # 기본 안내 응답
     else:
         reply = (
             f"문의해 주셔서 감사합니다! 😊\n"
             f"입력하신 내용('{message}')에 대해 담당 상담원 연결이 필요하신가요?\n\n"
-            f"👉 **빠른 답변 키워드**: [배송], [반품/교환], [추천 상품], [사이즈], [고객센터]\n"
+            f"👉 **빠른 답변 키워드**: [적립금/회원가입], [배송], [반품/교환], [추천 상품], [고객센터]\n"
             f"더 구체적인 도움이 필요하시면 언제든 남겨주세요!"
         )
 
     return jsonify({"reply": reply})
+
+
+# ==============================================================
+# 회원가입 / 로그인 / 로그아웃 인증 라우트 (적립금 2,000원 지급)
+# ==============================================================
+
+@bp.route("/api/signup", methods=["POST"])
+def api_signup():
+    """
+    회원가입 API:
+    - 신규 회원 등록 시 축하 적립금 2,000원(points: 2000)을 자동으로 지급합니다.
+    - 가입 즉시 세션 로그인 처리하여 바로 적립금을 확인할 수 있도록 합니다.
+    """
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip()
+    password = (data.get("password") or "").strip()
+    full_name = (data.get("full_name") or "").strip() or email.split("@")[0]
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "이메일과 비밀번호를 모두 입력해 주세요."}), 400
+
+    if len(password) < 6:
+        return jsonify({"success": False, "message": "비밀번호는 최소 6자 이상이어야 합니다."}), 400
+
+    try:
+        admin_supabase = get_supabase_admin_client()
+        if not admin_supabase:
+            return jsonify({"success": False, "message": "서버 인증 설정이 올바르지 않습니다."}), 500
+
+        INITIAL_WELCOME_POINTS = 2000
+
+        # Supabase 관리자 API로 이메일 즉시 인증 완료된 사용자 생성 (적립금 2,000원 부여)
+        user_res = admin_supabase.auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": {
+                "full_name": full_name,
+                "points": INITIAL_WELCOME_POINTS
+            }
+        })
+
+        if not user_res.user:
+            return jsonify({"success": False, "message": "회원가입 처리에 실패했습니다."}), 400
+
+        user = user_res.user
+
+        # profiles 테이블에도 기본 정보 동기화 (오류 무시)
+        try:
+            admin_supabase.table("profiles").upsert({
+                "id": user.id,
+                "email": email,
+                "full_name": full_name,
+                "role": "CUSTOMER",
+                "customer_grade": "BRONZE",
+                "total_order_amount": 0
+            }).execute()
+        except Exception as pe:
+            logger.warning(f"Profile upsert warning: {pe}")
+
+        # 세션에 로그인 정보 저장
+        session["user_id"] = user.id
+        session["user_email"] = email
+        session["user_name"] = full_name
+        session["user_points"] = INITIAL_WELCOME_POINTS
+
+        return jsonify({
+            "success": True,
+            "message": f"🎉 회원가입을 축하합니다! 신규 회원 축하 적립금 {INITIAL_WELCOME_POINTS:,}원이 지급되었습니다.",
+            "points": INITIAL_WELCOME_POINTS,
+            "user": {
+                "id": user.id,
+                "email": email,
+                "full_name": full_name,
+                "points": INITIAL_WELCOME_POINTS
+            }
+        })
+
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"회원가입 에러: {error_msg}")
+        if "already registered" in error_msg.lower() or "unique constraint" in error_msg.lower() or "already exists" in error_msg.lower():
+            return jsonify({"success": False, "message": "이미 등록된 이메일 주소입니다. 로그인을 이용해 주세요."}), 400
+        return jsonify({"success": False, "message": f"회원가입 중 오류가 발생했습니다: {error_msg}"}), 500
+
+
+@bp.route("/api/login", methods=["POST"])
+def api_login():
+    """회원 로그인 API: 로그인 성공 시 세션에 유저 정보와 적립금을 저장합니다."""
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "이메일과 비밀번호를 입력해 주세요."}), 400
+
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return jsonify({"success": False, "message": "서버 연결에 실패했습니다."}), 500
+
+        res = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+
+        if not res.user:
+            return jsonify({"success": False, "message": "이메일 또는 비밀번호가 일치하지 않습니다."}), 400
+
+        user = res.user
+        metadata = user.user_metadata or {}
+        points = metadata.get("points", 2000)
+        full_name = metadata.get("full_name") or email.split("@")[0]
+
+        session["user_id"] = user.id
+        session["user_email"] = email
+        session["user_name"] = full_name
+        session["user_points"] = points
+
+        return jsonify({
+            "success": True,
+            "message": f"환영합니다, {full_name}님! (보유 적립금: {points:,}원)",
+            "points": points,
+            "user": {
+                "id": user.id,
+                "email": email,
+                "full_name": full_name,
+                "points": points
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"로그인 에러: {e}")
+        return jsonify({"success": False, "message": "이메일 또는 비밀번호가 올바르지 않습니다."}), 400
+
+
+@bp.route("/api/logout", methods=["POST"])
+def api_logout():
+    """로그아웃 API: 세션을 초기화합니다."""
+    session.clear()
+    return jsonify({"success": True, "message": "로그아웃되었습니다."})
+
+
+@bp.route("/api/me", methods=["GET"])
+def api_me():
+    """현재 로그인된 회원 정보 및 적립금을 조회합니다."""
+    if "user_id" in session:
+        return jsonify({
+            "is_logged_in": True,
+            "user": {
+                "id": session.get("user_id"),
+                "email": session.get("user_email"),
+                "name": session.get("user_name"),
+                "points": session.get("user_points", 2000)
+            }
+        })
+    return jsonify({"is_logged_in": False})
 
 
 @bp.route("/products/<product_id>")

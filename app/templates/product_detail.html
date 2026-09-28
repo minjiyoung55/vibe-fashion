@@ -70,6 +70,26 @@
                     {{ product.description }}
                 </p>
 
+                <!-- 회원 혜택 및 적립금 안내 카드 -->
+                <div class="alert alert-warning border-0 rounded-3 mb-4 py-2.5 px-3 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-gift-fill text-danger fs-5 me-2"></i>
+                        <div>
+                            {% if session.get('user_id') %}
+                                <strong class="text-dark">{{ session.get('user_name') }}님</strong> 보유 적립금: 
+                                <span class="badge bg-dark text-warning ms-1 px-2.5 py-1">{{ "{:,}".format(session.get('user_points', 2000)) }}원</span>
+                            {% else %}
+                                <strong class="text-dark">신규 회원 혜택:</strong> 가입 즉시 <strong>적립금 2,000원</strong> 지급!
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if not session.get('user_id') %}
+                        <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#authModal" data-tab="signup">
+                            가입하기
+                        </button>
+                    {% endif %}
+                </div>
+
                 <!-- 배송 정보 안내 -->
                 <div class="bg-light p-3 rounded-3 mb-4 small text-secondary">
                     <div class="d-flex align-items-center mb-1">
