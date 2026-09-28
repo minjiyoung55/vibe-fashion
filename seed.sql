@@ -191,7 +191,7 @@ begin
     insert into public.product_images (product_id, image_url, display_order, is_thumbnail)
     values
         -- 1) 베이직 크롭 티셔츠 (티셔츠/상의 패션 이미지)
-        (v_prod_crop_id, 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80', 1, true),
+        (v_prod_crop_id, 'https://axokmzyhxgbrdaysjmlu.supabase.co/storage/v1/object/public/product-images/crop_tshirt.jpg', 1, true),
         (v_prod_crop_id, 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=800&q=80', 2, false),
         -- 2) 와이드 데님 팬츠 (청바지/데님 팬츠 패션 이미지)
         (v_prod_pants_id, 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80', 1, true),
@@ -201,13 +201,13 @@ begin
         -- 4) 플로럴 미디 원피스 (원피스/드레스 패션 이미지)
         (v_prod_dress_id, 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80', 1, true),
         -- 5) 클래식 하얀색 진주목걸이 (진주 목걸이/액세서리 패션 이미지)
-        (v_prod_necklace_id, '/static/img/pearl_necklace.png', 1, true),
+        (v_prod_necklace_id, 'https://axokmzyhxgbrdaysjmlu.supabase.co/storage/v1/object/public/product-images/pearl_necklace.png', 1, true),
         -- 6) 슬림라인 에나멜 스틸레토 힐 (신발 패션 이미지)
-        (v_prod_heels_id, '/static/img/stiletto_heels.png', 1, true),
+        (v_prod_heels_id, 'https://axokmzyhxgbrdaysjmlu.supabase.co/storage/v1/object/public/product-images/stiletto_heels.png', 1, true),
         -- 7) 클래식 V넥 니트 베스트 (상의 패션 이미지)
-        (v_prod_vest_id, '/static/img/knit_vest.png', 1, true),
+        (v_prod_vest_id, 'https://axokmzyhxgbrdaysjmlu.supabase.co/storage/v1/object/public/product-images/knit_vest.png', 1, true),
         -- 8) 빈티지 레오파드 호피 안경 (액세서리 패션 이미지)
-        (v_prod_glasses_id, '/static/img/leopard_glasses.png', 1, true);
+        (v_prod_glasses_id, 'https://axokmzyhxgbrdaysjmlu.supabase.co/storage/v1/object/public/product-images/leopard_glasses.png', 1, true);
 
 end $$;
 
