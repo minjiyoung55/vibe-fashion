@@ -1,0 +1,7 @@
+# 프로젝트에 필요한 파이썬 라이브러리 목록입니다.
+# 설치 명령어: pip install -r requirements.txt
+
+flask>=3.0.0
+python-dotenv>=1.0.0
+supabase>=2.0.0
+gunicorn>=21.2.0

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VIBE FASHION - 감각적인 패션 셀렉트샵{% endblock %}</title>
+
+    <!-- Bootstrap 5.3 CDN CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- 커스텀 스타일시트 (static/css/style.css) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+    <!-- 상단 네비게이션 바 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold tracking-wider fs-4" href="{{ url_for('main.index') }}">
+                <i class="bi bi-bag-heart me-2 text-warning"></i>VIBE FASHION
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="메뉴 열기">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="{{ url_for('main.index') }}">홈</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#products-section">신상품</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#products-section">베스트</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about-section">브랜드 소개</a>
+                    </li>
+                </ul>
+
+                <!-- 우측 액션 메뉴 (장바구니, 검색 등) -->
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-outline-light position-relative btn-sm px-3" type="button" id="cartBtn">
+                        <i class="bi bi-cart3 me-1"></i> 장바구니
+                        <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            0
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 메인 본문 콘텐츠 영역 -->
+    <main class="flex-grow-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 하단 푸터 영역 -->
+    <footer class="bg-dark text-white-50 py-5 mt-auto border-top border-secondary" id="about-section">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h5 class="text-white fw-bold mb-3">VIBE FASHION</h5>
+                    <p class="small mb-2">당신만의 무드와 바이브를 완성하는 프리미엄 패션 큐레이션 스토어</p>
+                    <p class="small text-secondary mb-0">Flask & Bootstrap 5.3 기반으로 구축된 프로젝트입니다.</p>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold mb-3">고객센터</h6>
+                    <p class="small mb-1">운영시간: 평일 10:00 - 18:00</p>
+                    <p class="small mb-1">이메일: support@vibefashion.com</p>
+                    <p class="small mb-0">전화번호: 1588-0000</p>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold mb-3">Follow Us</h6>
+                    <div class="d-flex gap-3 fs-5">
+                        <a href="#" class="text-white-50"><i class="bi bi-instagram"></i></a>
+                        <a href="#" class="text-white-50"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="text-white-50"><i class="bi bi-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-4 border-secondary">
+            <p class="text-center small mb-0">&copy; 2026 VIBE FASHION. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5.3 CDN JS (번들: Popper 포함) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- 커스텀 자바스크립트 (static/js/main.js) -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

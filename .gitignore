@@ -1,0 +1,25 @@
+# 파이썬 가상환경
+venv/
+.venv/
+env/
+
+# 바이트코드 및 캐시 파일
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 환경변수 및 민감 정보 파일
+.env
+.env.local
+
+# 플라스크 인스턴스 폴더
+instance/
+
+# 운영체제 생성 파일
+.DS_Store
+Thumbs.db
+
+# VS Code 및 IDE 설정
+.vscode/
+.idea/

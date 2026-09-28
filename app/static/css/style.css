@@ -1,0 +1,319 @@
+/* ==========================================================================
+   VIBE FASHION 스타일시트 (Young Fit 감성 리뉴얼)
+   - 브랜드 컬러: 딥 네이비(#1a2a4a) + 코랄 포인트(#ff6b5b)
+   - 웹폰트: Google Fonts (Noto Sans KR, Playfair Display)
+   - Bootstrap 5.3 커스텀 오버라이드 및 반응형 최적화
+   ========================================================================== */
+
+/* 1. Google Fonts 임포트 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
+/* 2. 전역 CSS 변수 설정 */
+:root {
+    --brand-navy: #1a2a4a;        /* Young Fit 딥 네이비 */
+    --brand-navy-dark: #101c33;   /* 네이비 딥 다크 */
+    --brand-coral: #ff6b5b;       /* Young Fit 코랄 포인트 */
+    --brand-coral-hover: #ff5240; /* 코랄 호버 컬러 */
+    --brand-coral-subtle: #fff1f0;/* 연한 코랄 배경 */
+    --brand-gray-bg: #f8fafc;     /* 소프트 모던 배경 */
+}
+
+/* 3. 기본 타이포그래피 & 공통 스타일 */
+body {
+    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #2b3445;
+    background-color: var(--brand-gray-bg);
+    letter-spacing: -0.02em;
+    word-break: keep-all;
+}
+
+/* 영문 로고 및 프리미엄 헤딩에 Playfair Display 적용 */
+.navbar-brand,
+.hero-section h1,
+.hero-section .brand-highlight {
+    font-family: 'Playfair Display', 'Noto Sans KR', serif;
+    letter-spacing: 0.02em;
+}
+
+/* 4. 상단 네비게이션 바 커스텀 */
+.navbar {
+    background-color: var(--brand-navy) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navbar-brand i {
+    color: var(--brand-coral) !important;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    color: #ffffff !important;
+}
+
+/* 5. 히어로 섹션 (Hero Section) */
+.hero-section {
+    /* 네이비(#1a2a4a)에서 검은색(#0a0d14)으로 떨어지는 세련된 그라디언트 */
+    background: linear-gradient(180deg, var(--brand-navy) 0%, #0d1524 60%, #05080f 100%) !important;
+    padding-top: 5rem !important;
+    padding-bottom: 5.5rem !important;
+    text-align: center;
+}
+
+/* 히어로 내부 텍스트 및 버튼들을 중앙 정렬 구조로 재구성 */
+.hero-section .row {
+    justify-content: center;
+}
+
+.hero-section .col-lg-7 {
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+/* 컬렉션 뱃지 */
+.hero-section .badge {
+    background-color: rgba(255, 107, 91, 0.18) !important;
+    color: #ff9d93 !important;
+    border: 1px solid rgba(255, 107, 91, 0.35);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+}
+
+/* 슬로건 텍스트 스타일링: "당신의 일상을 스타일리시하게" 중앙 배치 */
+.hero-section h1 {
+    font-size: 0 !important;
+    line-height: 1.25;
+    margin-bottom: 1.25rem;
+    height: auto;
+}
+
+.hero-section h1::before {
+    content: "당신의 일상을 스타일리시하게";
+    font-size: clamp(2rem, 4.5vw, 3.25rem) !important;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 800;
+    color: #ffffff;
+    display: block;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.5rem;
+}
+
+/* 기존 h1 내부 요소 및 텍스트 노드 은닉 */
+.hero-section h1 * {
+    display: none !important;
+}
+
+.hero-section .lead {
+    font-size: 1.05rem;
+    color: #cbd5e1 !important;
+    margin-left: auto;
+    margin-right: auto;
+    padding-right: 0 !important;
+    max-width: 620px;
+}
+
+/* CTA 버튼 중앙 정렬 컨테이너 */
+.hero-section .d-flex.flex-wrap {
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+/* '지금 쇼핑하기' CTA 버튼 (코랄 컬러) */
+.hero-section .btn-warning {
+    background-color: var(--brand-coral) !important;
+    border-color: var(--brand-coral) !important;
+    font-weight: 600;
+    padding: 0.85rem 2.2rem;
+    border-radius: 50px;
+    box-shadow: 0 8px 20px rgba(255, 107, 91, 0.35) !important;
+    transition: all 0.25s ease;
+    font-size: 0 !important; /* 내부 텍스트 0 */
+}
+
+.hero-section .btn-warning::before {
+    content: "지금 쇼핑하기";
+    font-size: 1rem !important;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.hero-section .btn-warning * {
+    display: none !important;
+}
+
+.hero-section .btn-warning:hover {
+    background-color: var(--brand-coral-hover) !important;
+    border-color: var(--brand-coral-hover) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(255, 107, 91, 0.45) !important;
+}
+
+.hero-section .btn-outline-light {
+    border-radius: 50px;
+    padding: 0.85rem 1.8rem;
+    font-size: 1rem;
+    border-color: rgba(255, 255, 255, 0.35);
+    transition: all 0.25s ease;
+}
+
+.hero-section .btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: #ffffff;
+}
+
+/* 히어로 배너 이미지 영역 숨김 처리하여 중앙 텍스트 집중 */
+.hero-section .col-lg-5 {
+    display: none !important;
+}
+
+/* 6. 상품 카드 (Product Card) 호버 효과 및 디자인 개선 */
+.product-card {
+    background-color: #ffffff;
+    border-radius: 14px !important;
+    border: 1px solid #edf2f7 !important;
+    transition: transform 0.28s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.28s cubic-bezier(0.2, 0, 0.2, 1);
+    will-change: transform, box-shadow;
+}
+
+/* 호버 시 2% 확대 (scale 1.02) 및 부드럽고 깊은 그림자 강화 */
+.product-card:hover {
+    transform: scale(1.02) translateY(-4px);
+    box-shadow: 0 18px 36px rgba(26, 42, 74, 0.14) !important;
+}
+
+.product-img-wrapper {
+    overflow: hidden;
+    background-color: #f1f5f9;
+    aspect-ratio: 4 / 5;
+    position: relative;
+}
+
+.product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+/* 호버 시 내부 이미지 은은한 확대 */
+.product-card:hover .product-img {
+    transform: scale(1.04);
+}
+
+/* 할인 배지 및 상태 배지 (코랄 배경 + 흰색 텍스트) */
+.product-card .badge,
+.product-card span.badge {
+    background-color: var(--brand-coral) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.05em;
+    padding: 0.45rem 0.85rem !important;
+    box-shadow: 0 4px 10px rgba(255, 107, 91, 0.4) !important;
+    border: none !important;
+}
+
+/* 상품명 및 텍스트 */
+.product-card .card-title {
+    font-weight: 700;
+    color: var(--brand-navy);
+    line-height: 1.35;
+}
+
+/* 가격 텍스트 굵기 대폭 증가 (Bold 800) 및 딥 네이비 톤 적용 */
+.product-card .fs-5.text-dark {
+    font-weight: 800 !important;
+    font-size: 1.25rem !important;
+    color: var(--brand-navy) !important;
+    letter-spacing: -0.03em;
+}
+
+/* 카드 하단 담기 버튼 */
+.product-card .add-to-cart-btn {
+    background-color: var(--brand-navy);
+    border-color: var(--brand-navy);
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.product-card .add-to-cart-btn:hover {
+    background-color: var(--brand-coral);
+    border-color: var(--brand-coral);
+}
+
+/* 7. 특징 섹션 및 기타 요소 포인트 컬러 통일 */
+.text-warning,
+.bi-truck,
+.bi-arrow-repeat,
+.bi-shield-check,
+.bi-headset {
+    color: var(--brand-coral) !important;
+}
+
+/* 8. 장바구니 뱃지 */
+#cartCountBadge {
+    background-color: var(--brand-coral) !important;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.badge-bounce {
+    animation: bounce 0.3s ease;
+}
+
+@keyframes bounce {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.4); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* 9. 반응형 레이아웃 (모바일 ≤ 768px 최적화) */
+@media (max-width: 768px) {
+    /* 히어로 섹션 모바일 패딩 */
+    .hero-section {
+        padding-top: 3.5rem !important;
+        padding-bottom: 3.5rem !important;
+    }
+
+    .hero-section .d-flex.flex-wrap {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-section .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* 모바일(≤768px): 1열 카드 자동 배치 */
+    #products-section .row.g-4 > [class*="col-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .product-card .card-body {
+        padding: 1.25rem !important;
+    }
+
+    .product-card:hover {
+        transform: scale(1.01);
+    }
+}
+
+/* 태블릿 (769px ~ 991px): 2열 자동 배치 */
+@media (min-width: 769px) and (max-width: 991px) {
+    #products-section .row.g-4 > [class*="col-"] {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+/* 데스크톱 (≥ 992px): 4열 배치 유지 */
+@media (min-width: 992px) {
+    #products-section .row.g-4 > [class*="col-"] {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+}
