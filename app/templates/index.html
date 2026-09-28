@@ -75,15 +75,41 @@
 </section>
 
 <!-- ============================================================== -->
-<!-- 3. 더미 상품 카드 4개 섹션 (Products Section) -->
+<!-- 3. 상품 카드 섹션 (Products Section) -->
 <!-- ============================================================== -->
 <section class="py-5" id="products-section">
     <div class="container py-3">
         <!-- 섹션 헤더 타이틀 -->
-        <div class="text-center mb-5">
-            <span class="text-warning fw-bold text-uppercase tracking-wider small">Selected Picks</span>
-            <h2 class="fw-bold display-6 mt-1">이달의 추천 아이템</h2>
-            <p class="text-muted">VIBE FASHION MD가 엄선한 이번 주 베스트 컬렉션 4선</p>
+        <div class="text-center mb-4">
+            {% if current_category %}
+                <span class="badge {% if current_category.slug == 'new' %}bg-danger{% elif current_category.slug == 'best' %}bg-warning text-dark{% else %}bg-secondary{% endif %} px-3 py-2 rounded-pill fw-bold text-uppercase tracking-wider small mb-2">
+                    {{ current_category.name }}
+                </span>
+                <h2 class="fw-bold display-6 mt-1">{{ current_category.name }} 컬렉션</h2>
+                <p class="text-muted">{{ current_category.description or '엄선된 추천 상품들을 만나보세요.' }}</p>
+            {% else %}
+                <span class="text-warning fw-bold text-uppercase tracking-wider small">Selected Picks</span>
+                <h2 class="fw-bold display-6 mt-1">이달의 추천 아이템</h2>
+                <p class="text-muted">VIBE FASHION MD가 엄선한 이번 주 베스트 컬렉션</p>
+            {% endif %}
+        </div>
+
+        <!-- 카테고리 탭 필터 (전체, NEW, BEST 등) -->
+        <div class="d-flex justify-content-center flex-wrap gap-2 mb-5">
+            <a href="{{ url_for('main.index') }}" 
+               class="btn {% if not current_category %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 btn-sm fw-semibold">
+               전체
+            </a>
+            {% for cat in categories %}
+                {% if cat.slug in ['new', 'best', 'top', 'acc', 'dress', 'shoes'] %}
+                <a href="{{ url_for('main.category_products', slug=cat.slug) }}" 
+                   class="btn {% if current_category and current_category.slug == cat.slug %}btn-dark text-white{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 btn-sm fw-semibold">
+                   {% if cat.slug == 'new' %}<span class="text-danger fw-bold">NEW</span>
+                   {% elif cat.slug == 'best' %}<span class="text-warning fw-bold">BEST</span>
+                   {% else %}{{ cat.name }}{% endif %}
+                </a>
+                {% endif %}
+            {% endfor %}
         </div>
 
         <!-- 상품 카드 그리드 (Bootstrap Grid: 한 줄에 4개 배치) -->
@@ -91,29 +117,35 @@
             {% for product in products %}
             <div class="col-12 col-sm-6 col-lg-3">
                 <div class="card h-100 product-card shadow-sm border-0 rounded-3 overflow-hidden">
-                    <!-- 상품 이미지 및 뱃지 -->
-                    <div class="position-relative product-img-wrapper">
-                        <img src="{{ product.thumbnail_url }}" 
-                             class="card-img-top product-img" 
-                             alt="{{ product.name }}"
-                             loading="lazy">
-                        {% if product.badge %}
-                        <span class="position-absolute top-0 start-0 m-3 badge rounded-pill 
-                            {% if product.badge == 'BEST' %}bg-danger
-                            {% elif product.badge == 'NEW' %}bg-success
-                            {% elif product.badge == 'HOT' %}bg-warning text-dark
-                            {% else %}bg-dark{% endif %} px-2.5 py-1.5 shadow-sm">
-                            {{ product.badge }}
-                        </span>
-                        {% endif %}
-                    </div>
+                    <!-- 상품 이미지 및 뱃지 (클릭 시 상세페이지로 이동) -->
+                    <a href="{{ url_for('main.product_detail', product_id=product.id) }}" class="text-decoration-none text-dark">
+                        <div class="position-relative product-img-wrapper">
+                            <img src="{{ product.thumbnail_url }}" 
+                                 class="card-img-top product-img" 
+                                 alt="{{ product.name }}"
+                                 loading="lazy">
+                            {% if product.badge %}
+                            <span class="position-absolute top-0 start-0 m-3 badge rounded-pill 
+                                {% if product.badge == 'BEST' %}bg-danger
+                                {% elif product.badge == 'NEW' %}bg-success
+                                {% elif product.badge == 'HOT' %}bg-warning text-dark
+                                {% else %}bg-dark{% endif %} px-2.5 py-1.5 shadow-sm">
+                                {{ product.badge }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </a>
 
                     <!-- 상품 상세 정보 -->
                     <div class="card-body d-flex flex-column p-4">
                         {% if product.category %}
                         <span class="text-muted small fw-semibold text-uppercase mb-1">{{ product.category }}</span>
                         {% endif %}
-                        <h5 class="card-title fw-bold text-dark fs-6 mb-2">{{ product.name }}</h5>
+                        <h5 class="card-title fw-bold text-dark fs-6 mb-2">
+                            <a href="{{ url_for('main.product_detail', product_id=product.id) }}" class="text-decoration-none text-dark hover-title">
+                                {{ product.name }}
+                            </a>
+                        </h5>
                         <p class="card-text text-muted small flex-grow-1 mb-3">
                             {{ product.description }}
                         </p>

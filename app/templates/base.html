@@ -27,13 +27,17 @@
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
                     <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="{{ url_for('main.index') }}">홈</a>
+                        <a class="nav-link {% if not current_category %}active{% endif %}" aria-current="page" href="{{ url_for('main.index') }}">전체 상품</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#products-section">신상품</a>
+                        <a class="nav-link {% if current_category and current_category.slug == 'new' %}active text-warning fw-bold{% endif %}" href="{{ url_for('main.category_products', slug='new') }}">
+                            <span class="badge bg-danger me-1">NEW</span>신상품
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#products-section">베스트</a>
+                        <a class="nav-link {% if current_category and current_category.slug == 'best' %}active text-warning fw-bold{% endif %}" href="{{ url_for('main.category_products', slug='best') }}">
+                            <span class="badge bg-warning text-dark me-1">BEST</span>베스트
+                        </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#about-section">브랜드 소개</a>
@@ -86,6 +90,56 @@
             <p class="text-center small mb-0">&copy; 2026 VIBE FASHION. All rights reserved.</p>
         </div>
     </footer>
+
+    <!-- ============================================================== -->
+    <!-- 실시간 문의 채팅창 위젯 (Floating Chatbot) -->
+    <!-- ============================================================== -->
+    <!-- 플로팅 토글 버튼 -->
+    <button type="button" class="chat-widget-btn" id="chatWidgetBtn" aria-label="고객센터 문의 채팅">
+        <i class="bi bi-chat-dots-fill"></i>
+        <span class="chat-badge-pulse" title="상담 가능"></span>
+    </button>
+
+    <!-- 채팅 팝업 윈도우 -->
+    <div class="chat-window" id="chatWindow">
+        <!-- 헤더 -->
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <div class="chat-header-avatar">
+                    <i class="bi bi-headset"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold fs-6">VIBE 상담봇</h6>
+                    <small class="text-white-50" style="font-size: 0.72rem;">실시간 문의 응대 중</small>
+                </div>
+            </div>
+            <button type="button" class="btn-close btn-close-white btn-sm" id="chatCloseBtn" aria-label="닫기"></button>
+        </div>
+
+        <!-- 메시지 리스트 -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-msg bot">
+                안녕하세요! <strong>VIBE FASHION</strong>에 오신 것을 환영합니다. ✨<br><br>
+                상품, 배송, 교환 등 궁금하신 점을 자유롭게 물어보세요!
+            </div>
+        </div>
+
+        <!-- 빠른 선택 태그 바 -->
+        <div class="chat-quick-replies">
+            <button type="button" class="chat-quick-tag" data-text="배송 일정 알려줘">🚚 배송 안내</button>
+            <button type="button" class="chat-quick-tag" data-text="반품 및 교환 어떻게 해?">🔄 교환/반품</button>
+            <button type="button" class="chat-quick-tag" data-text="요즘 제일 인기있는 추천 상품 알려줘">✨ 상품 추천</button>
+            <button type="button" class="chat-quick-tag" data-text="고객센터 운영시간 알려줘">📞 고객센터</button>
+        </div>
+
+        <!-- 메시지 입력 영역 -->
+        <form class="chat-footer" id="chatForm">
+            <input type="text" class="chat-input" id="chatInput" placeholder="문의 내용을 입력하세요..." autocomplete="off">
+            <button type="submit" class="chat-send-btn" aria-label="전송">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+    </div>
 
     <!-- Bootstrap 5.3 CDN JS (번들: Popper 포함) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - VIBE FASHION{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- 상단 경로 (Breadcrumb) -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}" class="text-decoration-none text-muted">홈</a></li>
+            {% if product.category %}
+            <li class="breadcrumb-item text-muted">{{ product.category }}</li>
+            {% endif %}
+            <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">{{ product.name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-5 align-items-start">
+        <!-- 1. 상품 이미지 영역 -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-3">
+                <img id="mainProductImage" 
+                     src="{{ product.thumbnail_url }}" 
+                     alt="{{ product.name }}" 
+                     class="img-fluid w-100 object-fit-cover" 
+                     style="max-height: 580px;">
+            </div>
+
+            {% if product.images and product.images|length > 1 %}
+            <div class="d-flex gap-2 overflow-auto pb-2">
+                {% for img in product.images %}
+                <img src="{{ img.image_url }}" 
+                     alt="{{ product.name }} 이미지" 
+                     class="rounded-3 border thumbnail-selector {% if loop.first %}border-warning border-2{% endif %}" 
+                     style="width: 80px; height: 80px; object-fit: cover; cursor: pointer;"
+                     onclick="document.getElementById('mainProductImage').src = this.src; document.querySelectorAll('.thumbnail-selector').forEach(el => el.classList.remove('border-warning', 'border-2')); this.classList.add('border-warning', 'border-2');">
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 2. 상품 상세 정보 및 구매 옵션 -->
+        <div class="col-lg-6">
+            <div class="ps-lg-3">
+                {% if product.category %}
+                <span class="badge bg-light text-secondary border px-3 py-2 rounded-pill fw-semibold mb-2">
+                    {{ product.category }}
+                </span>
+                {% endif %}
+
+                <h1 class="fw-bold display-6 mb-3 text-dark">{{ product.name }}</h1>
+
+                <!-- 가격 영역 -->
+                <div class="mb-4 pb-3 border-bottom">
+                    {% if product.discount_rate and product.discount_rate > 0 %}
+                    <div class="text-muted text-decoration-line-through small mb-1">
+                        정가 {{ product.formatted_original_price }}
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <span class="text-danger fw-bold fs-3">{{ product.discount_rate|int }}%</span>
+                        <span class="fw-bold display-6 text-dark">{{ product.formatted_price }}</span>
+                    </div>
+                    {% else %}
+                    <div class="fw-bold display-6 text-dark">{{ product.formatted_price }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- 상품 간단 설명 -->
+                <p class="text-muted lead fs-6 mb-4 lh-base">
+                    {{ product.description }}
+                </p>
+
+                <!-- 배송 정보 안내 -->
+                <div class="bg-light p-3 rounded-3 mb-4 small text-secondary">
+                    <div class="d-flex align-items-center mb-1">
+                        <i class="bi bi-truck me-2 text-warning fs-5"></i>
+                        <span><strong>배송비:</strong> 3,000원 (50,000원 이상 구매 시 무료 배송)</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-clock-history me-2 text-warning fs-5"></i>
+                        <span><strong>출고 일정:</strong> 평일 14시 이전 결제 완료 시 당일 출고</span>
+                    </div>
+                </div>
+
+                <!-- 상품 옵션 선택 (있을 경우) -->
+                {% if product.options %}
+                <div class="mb-4">
+                    <label for="optionSelect" class="form-label fw-bold small">옵션 선택</label>
+                    <select id="optionSelect" class="form-select form-select-lg">
+                        <option value="" selected>옵션을 선택해주세요</option>
+                        {% for opt in product.options %}
+                        <option value="{{ opt.id }}">
+                            {{ opt.option_value }} 
+                            {% if opt.additional_price and opt.additional_price > 0 %}
+                            (+{{ opt.additional_price|int }}원)
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <!-- 수량 선택 -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold small">수량</label>
+                    <div class="input-group" style="width: 140px;">
+                        <button class="btn btn-outline-secondary" type="button" id="qtyMinusBtn">-</button>
+                        <input type="number" id="productQuantity" class="form-control text-center" value="1" min="1" max="99">
+                        <button class="btn btn-outline-secondary" type="button" id="qtyPlusBtn">+</button>
+                    </div>
+                </div>
+
+                <!-- 구매 및 장바구니 버튼 -->
+                <div class="d-grid gap-2 d-md-flex mt-4 pt-2">
+                    <button type="button" 
+                            class="btn btn-outline-dark btn-lg flex-grow-1 add-to-cart-btn"
+                            data-id="{{ product.id }}"
+                            data-name="{{ product.name }}"
+                            data-price="{{ product.raw_price }}">
+                        <i class="bi bi-cart-plus me-1"></i> 장바구니 담기
+                    </button>
+                    <button type="button" class="btn btn-warning btn-lg flex-grow-1 fw-bold text-dark" id="buyNowBtn">
+                        바로 구매하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 장바구니 알림 토스트 (Bootstrap Toast) -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="cartToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                장바구니에 상품이 담겼습니다.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="닫기"></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 수량 조절 버튼 스크립트
+    document.addEventListener("DOMContentLoaded", () => {
+        const qtyInput = document.getElementById("productQuantity");
+        const minusBtn = document.getElementById("qtyMinusBtn");
+        const plusBtn = document.getElementById("qtyPlusBtn");
+        const buyNowBtn = document.getElementById("buyNowBtn");
+
+        if (minusBtn && qtyInput) {
+            minusBtn.addEventListener("click", () => {
+                let val = parseInt(qtyInput.value) || 1;
+                if (val > 1) qtyInput.value = val - 1;
+            });
+        }
+
+        if (plusBtn && qtyInput) {
+            plusBtn.addEventListener("click", () => {
+                let val = parseInt(qtyInput.value) || 1;
+                if (val < 99) qtyInput.value = val + 1;
+            });
+        }
+
+        if (buyNowBtn) {
+            buyNowBtn.addEventListener("click", () => {
+                alert("주문 페이지로 이동합니다. (준비 중인 기능입니다)");
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -23,3 +23,5 @@ Thumbs.db
 # VS Code 및 IDE 설정
 .vscode/
 .idea/
+*.pyc
+*.log

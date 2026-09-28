@@ -36,47 +36,253 @@ def get_supabase_client() -> Client | None:
         return None
 
 
+def _process_product_item(item: dict) -> dict:
+    """상품 딕셔너리 데이터를 템플릿 표시용 데이터로 변환합니다."""
+    images = item.get("product_images") or []
+    images.sort(key=lambda x: x.get("display_order", 0))
+
+    thumbnail_url = item.get("thumbnail_url")
+    if not thumbnail_url:
+        for img in images:
+            if img.get("is_thumbnail"):
+                thumbnail_url = img.get("image_url")
+                break
+        if not thumbnail_url and images:
+            thumbnail_url = images[0].get("image_url")
+    if not thumbnail_url:
+        thumbnail_url = "https://picsum.photos/seed/vibe-product/600/700"
+
+    raw_price = float(item.get("price") or 0)
+    discount_rate = float(item.get("discount_rate") or 0)
+    if discount_rate > 0:
+        real_price = raw_price * (1 - discount_rate / 100)
+        formatted_price = f"{int(round(real_price)):,}원"
+        formatted_original_price = f"{int(raw_price):,}원"
+    else:
+        formatted_price = f"{int(raw_price):,}원"
+        formatted_original_price = formatted_price
+
+    category_info = item.get("categories") or {}
+    category_name = category_info.get("name") if isinstance(category_info, dict) else ""
+
+    # NEW / BEST 뱃지 지정
+    badge = ""
+    if category_name in ("NEW", "신상품"):
+        badge = "NEW"
+    elif category_name in ("BEST", "베스트"):
+        badge = "BEST"
+
+    return {
+        "id": item.get("id"),
+        "name": item.get("name"),
+        "description": item.get("description") or "",
+        "raw_price": int(raw_price),
+        "price": formatted_price,
+        "formatted_price": formatted_price,
+        "formatted_original_price": formatted_original_price,
+        "discount_rate": discount_rate,
+        "thumbnail_url": thumbnail_url,
+        "category": category_name,
+        "badge": badge,
+        "images": images,
+    }
+
+
 @bp.route("/")
 def index():
     """
     쇼핑몰 메인 페이지 라우트입니다.
-    Supabase products 테이블에서 is_active=true, is_featured=true인 상품 최대 4개를 조회하여 템플릿에 전달합니다.
-    연결 실패 또는 오류 시 빈 리스트로 안전하게 대체하여 앱이 중단되지 않도록 합니다.
+    Supabase products 테이블에서 추천 상품 및 카테고리별 목록을 조회합니다.
     """
     products = []
+    categories = []
 
     try:
         supabase = get_supabase_client()
         if supabase:
-            # is_active=True, is_featured=True 조건으로 최대 4개 상품 조회
+            # 1. 활성화된 카테고리 목록 조회
             try:
-                query = (
-                    supabase.table("products")
-                    .select("*, product_images(image_url, is_thumbnail), categories(name)")
-                    .eq("is_active", True)
-                    .eq("is_featured", True)
-                    .limit(4)
-                )
-                response = query.execute()
-                raw_products = response.data or []
-            except Exception as q_err:
-                # DB에 is_active 컬럼이 없는 경우 대비한 fallback
-                print(f"[Supabase Notice] is_active 쿼리 실패, is_featured 조건으로 재시도: {q_err}", file=sys.stderr)
-                query = (
-                    supabase.table("products")
-                    .select("*, product_images(image_url, is_thumbnail), categories(name)")
-                    .eq("is_featured", True)
-                    .limit(4)
-                )
-                response = query.execute()
-                raw_products = response.data or []
+                cat_res = supabase.table("categories").select("*").eq("is_active", True).order("id").execute()
+                categories = cat_res.data or []
+            except Exception as e:
+                logger.error(f"카테고리 목록 조회 실패: {e}")
 
-            # 데이터 가공: 가격 포맷팅('{:,}원') 및 thumbnail_url 추출
+            # 2. 추천 상품 조회 (is_featured=True, 최대 12개)
+            query = (
+                supabase.table("products")
+                .select("*, product_images(image_url, is_thumbnail, display_order), categories(name, slug)")
+                .eq("is_featured", True)
+                .order("created_at", desc=False)
+                .limit(12)
+            )
+            response = query.execute()
+            raw_products = response.data or []
+
             for item in raw_products:
-                # 썸네일 이미지 추출 (직접 thumbnail_url 컬럼 -> product_images 연관 테이블 -> 기본 이미지)
+                products.append(_process_product_item(item))
+    except Exception as e:
+        print(f"[Supabase Error] 상품 목록 조회 실패: {e}", file=sys.stderr)
+        logger.error(f"Supabase 상품 목록 조회 실패: {e}")
+        products = []
+
+    return render_template("index.html", products=products, categories=categories, current_category=None)
+
+
+@bp.route("/category/<slug>")
+def category_products(slug: str):
+    """
+    카테고리별 상품 목록 페이지 라우트입니다. (new, best 등)
+    """
+    products = []
+    categories = []
+    target_category = None
+
+    try:
+        supabase = get_supabase_client()
+        if supabase:
+            # 1. 카테고리 목록 조회
+            cat_res = supabase.table("categories").select("*").eq("is_active", True).order("id").execute()
+            categories = cat_res.data or []
+
+            # 2. 선택된 카테고리 정보 조회
+            for c in categories:
+                if c.get("slug") == slug:
+                    target_category = c
+                    break
+
+            if target_category:
+                # 3. 해당 카테고리에 속한 상품 조회
+                p_res = (
+                    supabase.table("products")
+                    .select("*, product_images(image_url, is_thumbnail, display_order), categories(name, slug)")
+                    .eq("category_id", target_category["id"])
+                    .order("created_at", desc=True)
+                    .execute()
+                )
+                for item in p_res.data or []:
+                    products.append(_process_product_item(item))
+    except Exception as e:
+        logger.error(f"카테고리 상품 목록 조회 실패: {e}")
+
+    return render_template(
+        "index.html",
+        products=products,
+        categories=categories,
+        current_category=target_category,
+    )
+
+
+@bp.route("/api/chat", methods=["POST"])
+def chat_api():
+    """
+    실시간 고객 문의 챗봇 API입니다.
+    사용자의 질문 키워드를 분석하여 친절하고 정확한 자동 응답을 반환합니다.
+    """
+    from flask import request, jsonify
+
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+
+    if not message:
+        return jsonify({"reply": "문의 내용을 입력해 주세요."}), 400
+
+    msg_lower = message.lower()
+
+    # 1. 배송 / 배송비 문의
+    if any(k in msg_lower for k in ["배송", "택배", "언제 와", "출고", "도착"]):
+        reply = (
+            "🚚 **배송 안내입니다!**\n"
+            "- 평일 오후 2시 이전 결제 완료 시 **당일 출고**됩니다.\n"
+            "- 기본 배송비는 3,000원이며, **50,000원 이상 구매 시 무료 배송** 혜택을 드립니다.\n"
+            "- 출고 후 평균 1~2영업일 내에 받아보실 수 있습니다."
+        )
+    # 2. 반품 / 교환 / 환불 문의
+    elif any(k in msg_lower for k in ["반품", "교환", "환불", "취소"]):
+        reply = (
+            "🔄 **반품 및 교환 안내입니다!**\n"
+            "- 상품 수령 후 **7일 이내**에 고객센터 또는 마이페이지를 통해 신청 가능합니다.\n"
+            "- 단순 변심의 경우 왕복 배송비 6,000원이 부과될 수 있습니다.\n"
+            "- 착용 흔적, 라벨/택 훼손이 없는 상태에서 가능합니다."
+        )
+    # 3. 상품 추천 / 신상품 / 베스트 문의
+    elif any(k in msg_lower for k in ["추천", "베스트", "인기", "신상품", "신상", "new", "best", "어떤게 좋아"]):
+        reply = (
+            "✨ **MD 추천 아이템을 소개해 드려요!**\n"
+            "- **BEST**: 우아한 실루엣의 '플로럴 미디 원피스'와 '클래식 하얀색 진주목걸이'가 큰 사랑을 받고 있어요.\n"
+            "- **NEW**: 올 시즌 신상 '클래식 V넥 니트 베스트'와 '빈티지 레오파드 호피 안경'을 확인해 보세요!"
+        )
+    # 4. 사이즈 / 소재 / 세탁 문의
+    elif any(k in msg_lower for k in ["사이즈", "치수", "소재", "원단", "세탁"]):
+        reply = (
+            "📏 **사이즈 & 관리 안내입니다!**\n"
+            "- 각 상품 상세페이지 하단에서 실측 사이즈표를 확인하실 수 있습니다.\n"
+            "- 니트나 원피스는 첫 세탁 시 드라이클리닝을 권장합니다.\n"
+            "- 특정 상품의 상세 치수가 궁금하시면 상품명을 알려주세요!"
+        )
+    # 5. 고객센터 운영 시간 / 전화번호 문의
+    elif any(k in msg_lower for k in ["고객센터", "전화", "연락처", "상담원", "시간", "운영"]):
+        reply = (
+            "📞 **고객센터 운영 안내입니다!**\n"
+            "- 운영 시간: 평일 10:00 ~ 18:00 (점심시간 12:30 ~ 13:30 / 주말 및 공휴일 휴무)\n"
+            "- 대표 전화: 1588-0000\n"
+            "- 이메일: support@vibefashion.com"
+        )
+    # 6. 할인 / 쿠폰 / 이벤트 문의
+    elif any(k in msg_lower for k in ["할인", "쿠폰", "이벤트", "적립금", "세일"]):
+        reply = (
+            "🎁 **할인 및 이벤트 혜택 안내입니다!**\n"
+            "- 신규 회원 가입 시 즉시 사용 가능한 **10% 할인 쿠폰**을 드립니다.\n"
+            "- 이달의 추천 아이템 컬렉션에서 최대 33% 할인된 특가 상품들을 만나보세요!"
+        )
+    # 기본 안내 응답
+    else:
+        reply = (
+            f"문의해 주셔서 감사합니다! 😊\n"
+            f"입력하신 내용('{message}')에 대해 담당 상담원 연결이 필요하신가요?\n\n"
+            f"👉 **빠른 답변 키워드**: [배송], [반품/교환], [추천 상품], [사이즈], [고객센터]\n"
+            f"더 구체적인 도움이 필요하시면 언제든 남겨주세요!"
+        )
+
+    return jsonify({"reply": reply})
+
+
+@bp.route("/products/<product_id>")
+def product_detail(product_id: str):
+    """
+    상품 상세 페이지 라우트입니다.
+    상품 ID를 기반으로 Supabase에서 상품 상세 정보, 옵션, 이미지를 조회하여 표시합니다.
+    """
+    product = None
+
+    try:
+        supabase = get_supabase_client()
+        if supabase:
+            # 상품 정보 조회 (카테고리 및 관련 이미지 포함)
+            response = (
+                supabase.table("products")
+                .select("*, categories(name), product_images(image_url, display_order, is_thumbnail)")
+                .eq("id", product_id)
+                .single()
+                .execute()
+            )
+            item = response.data
+
+            if item:
+                # 상품 옵션 조회
+                options_res = (
+                    supabase.table("product_options")
+                    .select("*")
+                    .eq("product_id", product_id)
+                    .execute()
+                )
+                options = options_res.data or []
+
+                # 이미지 목록 정리 (display_order 기준 정렬)
+                images = item.get("product_images") or []
+                images.sort(key=lambda x: x.get("display_order", 0))
+
                 thumbnail_url = item.get("thumbnail_url")
                 if not thumbnail_url:
-                    images = item.get("product_images") or []
                     for img in images:
                         if img.get("is_thumbnail"):
                             thumbnail_url = img.get("image_url")
@@ -86,30 +292,45 @@ def index():
                 if not thumbnail_url:
                     thumbnail_url = "https://picsum.photos/seed/vibe-product/600/700"
 
-                # 가격 포맷팅 (예: 19,900원)
-                raw_price = item.get("price") or 0
-                try:
-                    formatted_price = f"{int(float(raw_price)):,}원"
-                except (ValueError, TypeError):
-                    formatted_price = f"{raw_price}원"
+                # 가격 및 할인율 계산
+                raw_price = float(item.get("price") or 0)
+                discount_rate = float(item.get("discount_rate") or 0)
+                if discount_rate > 0:
+                    real_price = raw_price * (1 - discount_rate / 100)
+                    formatted_price = f"{int(round(real_price)):,}원"
+                    formatted_original_price = f"{int(raw_price):,}원"
+                else:
+                    formatted_price = f"{int(raw_price):,}원"
+                    formatted_original_price = formatted_price
 
                 category_info = item.get("categories") or {}
                 category_name = category_info.get("name") if isinstance(category_info, dict) else ""
 
-                products.append({
+                product = {
                     "id": item.get("id"),
                     "name": item.get("name"),
                     "description": item.get("description") or "",
-                    "price": formatted_price,
+                    "raw_price": int(raw_price),
+                    "formatted_price": formatted_price,
+                    "formatted_original_price": formatted_original_price,
+                    "discount_rate": discount_rate,
                     "thumbnail_url": thumbnail_url,
                     "category": category_name,
-                })
+                    "images": images,
+                    "options": options,
+                }
     except Exception as e:
-        # Supabase 연결 실패 또는 오류 시 터미널 에러 로그 출력 및 빈 리스트 대체
-        print(f"[Supabase Error] 상품 목록 조회 실패: {e}", file=sys.stderr)
-        logger.error(f"Supabase 상품 목록 조회 실패: {e}")
-        products = []
+        print(f"[Supabase Error] 상품 상세 조회 실패: {e}", file=sys.stderr)
+        logger.error(f"상품 상세 조회 실패: {e}")
 
-    return render_template("index.html", products=products)
+    if not product:
+        # 상품을 찾을 수 없는 경우
+        return render_template(
+            "index.html",
+            products=[],
+            error_message="요청하신 상품을 찾을 수 없습니다."
+        ), 404
+
+    return render_template("product_detail.html", product=product)
 
 

@@ -17,6 +17,10 @@ declare
     v_prod_pants_id uuid := '22222222-2222-2222-2222-222222222222'::uuid;
     v_prod_jacket_id uuid := '33333333-3333-3333-3333-333333333333'::uuid;
     v_prod_dress_id uuid := '44444444-4444-4444-4444-444444444444'::uuid;
+    v_prod_necklace_id uuid := '55555555-5555-5555-5555-555555555555'::uuid;
+    v_prod_heels_id uuid := '66666666-6666-6666-6666-666666666666'::uuid;
+    v_prod_vest_id uuid := '77777777-7777-7777-7777-777777777777'::uuid;
+    v_prod_glasses_id uuid := '88888888-8888-8888-8888-888888888888'::uuid;
 begin
 
     -- =====================================================
@@ -99,6 +103,54 @@ begin
             100,
             'ON_SALE',
             true
+        ),
+        (
+            v_prod_necklace_id,
+            v_acc_id,
+            '클래식 하얀색 진주목걸이',
+            'classic-white-pearl-necklace',
+            '은은하고 고급스러운 광택감으로 어떤 룩에도 우아한 포인트를 주는 하얀색 진주목걸이입니다.',
+            25000.00,
+            0,
+            80,
+            'ON_SALE',
+            true
+        ),
+        (
+            v_prod_heels_id,
+            v_shoes_id,
+            '슬림라인 에나멜 스틸레토 힐',
+            'slim-line-enamel-stiletto-heels',
+            '날렵한 포인티드 토와 세련된 힐 라인으로 레그라인을 슬림하고 우아하게 연출해주는 에나멜 스틸레토 힐입니다.',
+            48000.00,
+            0,
+            50,
+            'ON_SALE',
+            true
+        ),
+        (
+            v_prod_vest_id,
+            v_top_id,
+            '클래식 V넥 니트 베스트',
+            'classic-v-neck-knit-vest',
+            '탄탄한 짜임의 케이블 니트 조직감과 여유로운 핏으로 셔츠나 티셔츠 위에 클래식하게 레이어드하기 좋은 V넥 니트 베스트입니다.',
+            34900.00,
+            0,
+            60,
+            'ON_SALE',
+            true
+        ),
+        (
+            v_prod_glasses_id,
+            v_acc_id,
+            '빈티지 레오파드 호피 안경',
+            'vintage-leopard-pattern-glasses',
+            '감각적인 타원형 쉐입과 레트로한 호피 패턴 프레임으로 지적이고 스타일리시한 무드를 완성해주는 데일리 안경입니다.',
+            28000.00,
+            0,
+            45,
+            'ON_SALE',
+            true
         )
     on conflict (id) do update
     set
@@ -129,10 +181,11 @@ begin
         (v_prod_crop_id, 'COLOR / SIZE', '베이지 / L', 0, 25);
 
     -- =====================================================
-    -- 4. 상품 4종 썸네일 및 대표 이미지 등록 (picsum.photos)
+    -- 4. 상품 썸네일 및 대표 이미지 등록
     -- =====================================================
     delete from public.product_images where product_id in (
-        v_prod_crop_id, v_prod_pants_id, v_prod_jacket_id, v_prod_dress_id
+        v_prod_crop_id, v_prod_pants_id, v_prod_jacket_id, v_prod_dress_id, 
+        v_prod_necklace_id, v_prod_heels_id, v_prod_vest_id, v_prod_glasses_id
     );
 
     insert into public.product_images (product_id, image_url, display_order, is_thumbnail)
@@ -146,7 +199,15 @@ begin
         -- 3) 오버핏 코튼 자켓 (자켓/아우터 패션 이미지)
         (v_prod_jacket_id, 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=800&q=80', 1, true),
         -- 4) 플로럴 미디 원피스 (원피스/드레스 패션 이미지)
-        (v_prod_dress_id, 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80', 1, true);
+        (v_prod_dress_id, 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=800&q=80', 1, true),
+        -- 5) 클래식 하얀색 진주목걸이 (진주 목걸이/액세서리 패션 이미지)
+        (v_prod_necklace_id, '/static/img/pearl_necklace.png', 1, true),
+        -- 6) 슬림라인 에나멜 스틸레토 힐 (신발 패션 이미지)
+        (v_prod_heels_id, '/static/img/stiletto_heels.png', 1, true),
+        -- 7) 클래식 V넥 니트 베스트 (상의 패션 이미지)
+        (v_prod_vest_id, '/static/img/knit_vest.png', 1, true),
+        -- 8) 빈티지 레오파드 호피 안경 (액세서리 패션 이미지)
+        (v_prod_glasses_id, '/static/img/leopard_glasses.png', 1, true);
 
 end $$;
 
