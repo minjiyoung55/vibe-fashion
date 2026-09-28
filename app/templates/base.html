@@ -40,6 +40,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if current_category and current_category.slug == 'today-delivery' %}active text-success fw-bold{% endif %}" href="{{ url_for('main.category_products', slug='today-delivery') }}">
+                            <span class="badge bg-success me-1">⚡오늘출발</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#about-section">브랜드 소개</a>
                     </li>
                 </ul>

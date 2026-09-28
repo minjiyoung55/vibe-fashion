@@ -83,12 +83,14 @@ def _process_product_item(item: dict) -> dict:
     category_info = item.get("categories") or {}
     category_name = category_info.get("name") if isinstance(category_info, dict) else ""
 
-    # NEW / BEST 뱃지 지정
+    # NEW / BEST / 오늘출발 뱃지 지정
     badge = ""
     if category_name in ("NEW", "신상품"):
         badge = "NEW"
     elif category_name in ("BEST", "베스트"):
         badge = "BEST"
+    elif category_name in ("오늘출발", "당일발송"):
+        badge = "오늘출발"
 
     return {
         "id": item.get("id"),

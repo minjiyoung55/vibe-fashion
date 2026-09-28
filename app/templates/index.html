@@ -80,7 +80,7 @@
         <!-- 섹션 헤더 타이틀 -->
         <div class="text-center mb-4">
             {% if current_category %}
-                <span class="badge {% if current_category.slug == 'new' %}bg-danger{% elif current_category.slug == 'best' %}bg-warning text-dark{% else %}bg-secondary{% endif %} px-3 py-2 rounded-pill fw-bold text-uppercase tracking-wider small mb-2">
+                <span class="badge {% if current_category.slug == 'new' %}bg-danger{% elif current_category.slug == 'best' %}bg-warning text-dark{% elif current_category.slug == 'today-delivery' %}bg-success text-white{% else %}bg-secondary{% endif %} px-3 py-2 rounded-pill fw-bold text-uppercase tracking-wider small mb-2">
                     {{ current_category.name }}
                 </span>
                 <h2 class="fw-bold display-6 mt-1">{{ current_category.name }} 컬렉션</h2>
@@ -92,11 +92,15 @@
             {% endif %}
         </div>
 
-        <!-- 카테고리 탭 필터 (전체, NEW, BEST 등) -->
+        <!-- 카테고리 탭 필터 (전체, 오늘출발, NEW, BEST 등) -->
         <div class="d-flex justify-content-center flex-wrap gap-2 mb-5">
             <a href="{{ url_for('main.index') }}" 
                class="btn {% if not current_category %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-4 btn-sm fw-semibold">
                전체
+            </a>
+            <a href="{{ url_for('main.category_products', slug='today-delivery') }}" 
+               class="btn {% if current_category and current_category.slug == 'today-delivery' %}btn-success text-white{% else %}btn-outline-success{% endif %} rounded-pill px-4 btn-sm fw-bold">
+               ⚡ 오늘출발
             </a>
             {% for cat in categories %}
                 {% if cat.slug in ['new', 'best', 'top', 'acc', 'dress', 'shoes'] %}
@@ -126,9 +130,10 @@
                             <span class="position-absolute top-0 start-0 m-3 badge rounded-pill 
                                 {% if product.badge == 'BEST' %}bg-danger
                                 {% elif product.badge == 'NEW' %}bg-success
+                                {% elif product.badge == '오늘출발' %}bg-success text-white
                                 {% elif product.badge == 'HOT' %}bg-warning text-dark
                                 {% else %}bg-dark{% endif %} px-2.5 py-1.5 shadow-sm">
-                                {{ product.badge }}
+                                {% if product.badge == '오늘출발' %}⚡ 오늘출발{% else %}{{ product.badge }}{% endif %}
                             </span>
                             {% endif %}
                         </div>
