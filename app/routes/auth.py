@@ -19,12 +19,16 @@ bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 
 def get_site_url() -> str:
-    """사이트 기본 URL을 환경 변수 또는 현재 요청(Host)에서 읽어옵니다."""
+    """사이트 기본 URL을 환경 변수 또는 현재 요청(Host)에서 읽어옵니다. (Azure HTTPS 강제)"""
     env_url = os.getenv("SITE_URL")
     if env_url:
         return env_url.rstrip("/")
     if request and request.host_url:
-        return request.host_url.rstrip("/")
+        url = request.host_url.rstrip("/")
+        # Azure App Service 환경에서는 리버스 프록시 뒤에 있으므로 https로 변환
+        if "azurewebsites.net" in url and url.startswith("http://"):
+            url = "https://" + url[len("http://"):]
+        return url
     return "http://localhost:5000"
 
 
