@@ -1026,3 +1026,40 @@ def debug_env():
         "SECRET_KEY": f"{secret_key[:20]}..." if secret_key else "NOT SET",
         "status": "✅ All set!" if all([supabase_url, supabase_anon_key, supabase_service_key, secret_key]) else "❌ Missing vars"
     })
+
+
+# ==============================================================
+# Supabase 연결 테스트 엔드포인트 (DEBUG ONLY)
+# ==============================================================
+@bp.route("/_debug/supabase")
+def debug_supabase():
+    """
+    Supabase 클라이언트가 실제로 작동하는지 테스트
+    """
+    try:
+        # Admin 클라이언트로 products 테이블 조회 시도
+        admin_sb = get_supabase_admin_client()
+        if not admin_sb:
+            return jsonify({
+                "status": "❌ Failed",
+                "message": "Supabase admin client initialization failed"
+            }), 500
+        
+        # products 테이블에서 1개 항목만 조회
+        res = admin_sb.table("products").select("id, name").limit(1).execute()
+        
+        return jsonify({
+            "status": "✅ Connected",
+            "message": "Supabase connection successful",
+            "sample_data": res.data if res.data else "No data in products table",
+            "response_count": len(res.data) if res.data else 0
+        })
+    
+    except Exception as e:
+        error_msg = str(e)
+        return jsonify({
+            "status": "❌ Error",
+            "message": "Supabase connection failed",
+            "error": error_msg,
+            "error_type": type(e).__name__
+        }), 500
