@@ -49,11 +49,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // 4. 네비게이션 바 '장바구니' 버튼 클릭 시 안내
+    // 4. 네비게이션 바 '장바구니' 버튼 클릭 시 장바구니 페이지로 이동
     const cartBtn = document.getElementById("cartBtn");
     if (cartBtn) {
         cartBtn.addEventListener("click", () => {
-            alert(`현재 장바구니에 ${cartCount}개의 상품이 담겨 있습니다.`);
+            window.location.href = "/carts";
         });
     }
 

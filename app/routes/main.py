@@ -849,5 +849,158 @@ def cart_update_quantity(cart_id: int):
         return jsonify({"success": False, "message": f"수량 변경 중 오류가 발생했습니다: {str(e)}"}), 500
 
 
+# ==============================================================
+# 장바구니 페이지 (GET /carts)
+# ==============================================================
+@bp.route("/carts")
+def view_cart():
+    """
+    장바구니 페이지: 사용자의 모든 장바구니 아이템 조회 및 표시
+    """
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("auth.login"))
+
+    admin_sb = get_supabase_admin_client()
+    if not admin_sb:
+        return render_template("cart.html", cart_items=[], cart_total=0, cart_total_count=0)
+
+    try:
+        # carts 테이블에서 해당 사용자의 모든 아이템 조회 (상품 + 옵션 정보 조인)
+        cart_res = (
+            admin_sb.table("carts")
+            .select(
+                "id, quantity, products(id, name, discount_rate, price, product_images(image_url, is_thumbnail)), product_options(id, color, size, additional_price, stock)"
+            )
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        raw_items = cart_res.data or []
+
+        cart_items = []
+        cart_total = 0
+
+        for item in raw_items:
+            product = item.get("products") or {}
+            option = item.get("product_options") or {}
+            quantity = int(item.get("quantity") or 0)
+
+            # 상품 이미지
+            product_images = product.get("product_images") or []
+            thumbnail_url = None
+            for img in product_images:
+                if img.get("is_thumbnail"):
+                    thumbnail_url = img.get("image_url")
+                    break
+            if not thumbnail_url and product_images:
+                thumbnail_url = product_images[0].get("image_url")
+            if not thumbnail_url:
+                thumbnail_url = "https://picsum.photos/seed/vibe-product/300/350"
+
+            # 가격 계산
+            raw_price = float(product.get("price") or 0)
+            discount_rate = float(product.get("discount_rate") or 0)
+            additional_price = float(option.get("additional_price") or 0)
+
+            if discount_rate > 0:
+                unit_price = round(raw_price * (1 - discount_rate / 100)) + additional_price
+            else:
+                unit_price = raw_price + additional_price
+
+            subtotal = int(unit_price * quantity)
+            cart_total += subtotal
+
+            cart_items.append({
+                "id": item.get("id"),
+                "product_id": product.get("id"),
+                "product_name": product.get("name", "상품명 없음"),
+                "color": option.get("color", "-"),
+                "size": option.get("size", "-"),
+                "quantity": quantity,
+                "unit_price": int(unit_price),
+                "subtotal": subtotal,
+                "formatted_subtotal": f"{subtotal:,}원",
+                "formatted_unit_price": f"{int(unit_price):,}원",
+                "thumbnail_url": thumbnail_url,
+                "stock": int(option.get("stock") or 0)
+            })
+
+        cart_total_count = sum(item["quantity"] for item in cart_items)
+
+        return render_template(
+            "cart.html",
+            cart_items=cart_items,
+            cart_total=cart_total,
+            formatted_cart_total=f"{cart_total:,}원",
+            cart_total_count=cart_total_count
+        )
+
+    except Exception as e:
+        logger.error(f"장바구니 조회 실패: {e}")
+        return render_template("cart.html", cart_items=[], cart_total=0, cart_total_count=0)
 
 
+# ==============================================================
+# 장바구니 아이템 삭제 (DELETE /cart/<cart_id>)
+# ==============================================================
+@bp.route("/cart/<int:cart_id>", methods=["DELETE"])
+def delete_cart_item(cart_id: int):
+    """
+    장바구니 아이템 삭제:
+    - 본인 소유 확인 후 삭제
+    - 성공 시 삭제된 아이템 ID 및 남은 총 수량 반환
+    """
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({
+            "success": False,
+            "message": "로그인이 필요한 서비스입니다.",
+            "redirect": url_for("auth.login")
+        }), 401
+
+    admin_sb = get_supabase_admin_client()
+    if not admin_sb:
+        return jsonify({"success": False, "message": "서버 연결에 실패했습니다."}), 500
+
+    try:
+        # 1. 장바구니 아이템 조회
+        cart_res = (
+            admin_sb.table("carts")
+            .select("id, user_id, quantity")
+            .eq("id", cart_id)
+            .maybe_single()
+            .execute()
+        )
+        cart_item = cart_res.data if cart_res else None
+
+        if not cart_item:
+            return jsonify({"success": False, "message": "장바구니 항목을 찾을 수 없습니다."}), 404
+
+        # 2. 본인 소유 확인
+        if cart_item.get("user_id") != user_id:
+            return jsonify({"success": False, "message": "접근 권한이 없습니다."}), 403
+
+        # 3. 아이템 삭제
+        delete_res = (
+            admin_sb.table("carts")
+            .delete()
+            .eq("id", cart_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        # 4. 남은 장바구니 아이템 수량 합계 조회
+        remaining_res = admin_sb.table("carts").select("quantity").eq("user_id", user_id).execute()
+        cart_total_count = sum(int(item.get("quantity") or 0) for item in (remaining_res.data or []))
+
+        return jsonify({
+            "success": True,
+            "message": "장바구니에서 삭제되었습니다.",
+            "cart_id": cart_id,
+            "cart_count": cart_total_count
+        })
+
+    except Exception as e:
+        logger.error(f"장바구니 아이템 삭제 실패: {e}")
+        return jsonify({"success": False, "message": f"삭제 중 오류가 발생했습니다: {str(e)}"}), 500
