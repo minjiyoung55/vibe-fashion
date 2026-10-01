@@ -60,8 +60,8 @@
                                 <strong class="formatted-subtotal">{{ item.formatted_subtotal }}</strong>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-danger delete-btn" type="button" title="삭제">
-                                    <i class="fas fa-trash"></i>
+                                <button class="btn btn-danger delete-btn" type="button" title="삭제">
+                                    <i class="fas fa-trash"></i> 삭제
                                 </button>
                             </td>
                         </tr>
@@ -96,7 +96,7 @@
                                         <input type="number" class="form-control text-center qty-input" value="{{ item.quantity }}" min="1" max="{{ item.stock }}" readonly style="font-weight: bold;">
                                         <button class="btn btn-outline-secondary qty-plus" type="button">+</button>
                                     </div>
-                                    <button class="btn btn-sm btn-outline-danger delete-btn" type="button">
+                                    <button class="btn btn-danger delete-btn" type="button">
                                         <i class="fas fa-trash"></i> 삭제
                                     </button>
                                 </div>
