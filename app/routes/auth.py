@@ -353,8 +353,11 @@ def reset_password():
 def kakao_login():
     """
     카카오 OAuth 로그인 페이지로 리다이렉트합니다.
-    PKCE 보안 검증을 위해 생성된 code_verifier를 Flask 세션에 안전하게 저장합니다.
+    권한 없는 account_email을 제외하고 profile_nickname과 profile_image만 요청하여
+    KOE205 에러 없이 카카오 로그인이 즉시 성공하도록 처리합니다.
     """
+    import urllib.parse
+
     supabase = get_supabase_client()
     if not supabase:
         return redirect(url_for("auth.login", error="인증 서버 연결에 실패했습니다."))
@@ -363,7 +366,7 @@ def kakao_login():
     redirect_to = f"{site_url}/auth/callback"
 
     try:
-        # Supabase OAuth Provider 호출
+        # Supabase OAuth Provider 호출 (세션 및 code_verifier 생성)
         oauth_res = supabase.auth.sign_in_with_oauth({
             "provider": "kakao",
             "options": {
@@ -381,7 +384,11 @@ def kakao_login():
             logger.warning(f"code_verifier 세션 저장 경고: {se}")
 
         if oauth_res and getattr(oauth_res, "url", None):
-            return redirect(oauth_res.url)
+            # 카카오 앱에서 권한 없는 account_email을 제외하고 닉네임과 프로필만 명시적 지정
+            target_url = oauth_res.url
+            if "scope=" not in target_url and "scopes=" not in target_url:
+                target_url += "&scope=" + urllib.parse.quote("profile_nickname profile_image")
+            return redirect(target_url)
 
         return redirect(url_for("auth.login", error="카카오 로그인 연결 URL 생성에 실패했습니다."))
 
