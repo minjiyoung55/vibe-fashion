@@ -20,6 +20,8 @@ def create_app(test_config=None):
     # 기본 설정 등록
     app.config.from_mapping(
         SECRET_KEY=os.getenv("SECRET_KEY", "dev-secret-key-default"),
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=True,
     )
 
     # 테스트 설정이 주어졌다면 덮어쓰기
