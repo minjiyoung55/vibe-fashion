@@ -1004,3 +1004,25 @@ def delete_cart_item(cart_id: int):
     except Exception as e:
         logger.error(f"장바구니 아이템 삭제 실패: {e}")
         return jsonify({"success": False, "message": f"삭제 중 오류가 발생했습니다: {str(e)}"}), 500
+
+
+# ==============================================================
+# 환경 변수 디버그 엔드포인트 (DEBUG ONLY - 배포 후 제거)
+# ==============================================================
+@bp.route("/_debug/env")
+def debug_env():
+    """
+    환경 변수가 제대로 로드되었는지 확인하는 테스트 엔드포인트
+    """
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
+    supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
+    secret_key = os.getenv("SECRET_KEY")
+    
+    return jsonify({
+        "SUPABASE_URL": f"{supabase_url[:30]}..." if supabase_url else "NOT SET",
+        "SUPABASE_ANON_KEY": f"{supabase_anon_key[:30]}..." if supabase_anon_key else "NOT SET",
+        "SUPABASE_SERVICE_KEY": f"{supabase_service_key[:30]}..." if supabase_service_key else "NOT SET",
+        "SECRET_KEY": f"{secret_key[:20]}..." if secret_key else "NOT SET",
+        "status": "✅ All set!" if all([supabase_url, supabase_anon_key, supabase_service_key, secret_key]) else "❌ Missing vars"
+    })
