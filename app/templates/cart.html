@@ -125,9 +125,9 @@
                                     <strong id="totalAmount" class="text-primary">{{ formatted_cart_total }}</strong>
                                 </h5>
                             </div>
-                            <button class="btn btn-primary btn-lg w-100" id="checkoutBtn" disabled>
-                                결제하기 (준비 중)
-                            </button>
+                            <a href="{{ url_for('main.checkout') }}" class="btn btn-primary btn-lg w-100" id="checkoutBtn">
+                                💳 결제하기
+                            </a>
                             <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary btn-sm w-100 mt-2">
                                 계속 쇼핑하기
                             </a>
