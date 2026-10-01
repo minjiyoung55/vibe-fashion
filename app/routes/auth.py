@@ -477,11 +477,102 @@ def auth_callback():
 # ==============================================================
 # 마이페이지 및 로그아웃 라우트
 # ==============================================================
-@bp.route("/mypage", methods=["GET"])
+@bp.route("/mypage", methods=["GET", "POST"])
 @login_required
 def mypage():
-    """로그인된 사용자만 접근 가능한 마이페이지입니다."""
-    return render_template("mypage.html")
+    """
+    로그인된 사용자 전용 마이페이지 라우트입니다.
+    - profiles 테이블에서 로그인 사용자의 정보(이름, 이메일, 전화번호, 배송지 등)를 조회합니다.
+    - POST 요청 시 내 정보(이름, 전화번호, 배송지) 수정 처리
+    """
+    user_id = session.get("user_id")
+    admin_sb = get_supabase_admin_client()
+
+    profile_data = {
+        "email": session.get("user_email", ""),
+        "full_name": session.get("user_name", "고객"),
+        "phone": "",
+        "address": "",
+        "customer_grade": "BRONZE",
+        "total_order_amount": 0,
+    }
+
+    # 1. POST: 내 정보 수정 처리
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip()
+        phone = (request.form.get("phone") or "").strip()
+        address = (request.form.get("address") or "").strip()
+
+        if not full_name:
+            return redirect(url_for("auth.mypage", error="이름을 입력해 주세요."))
+
+        try:
+            # 1-1. auth.users 메타데이터 동기화
+            if admin_sb:
+                try:
+                    admin_sb.auth.admin.update_user_by_id(
+                        user_id,
+                        {
+                            "user_metadata": {
+                                "full_name": full_name,
+                                "phone": phone,
+                                "address": address,
+                                "points": session.get("user_points", 2000)
+                            }
+                        }
+                    )
+                except Exception as ue:
+                    logger.warning(f"user_metadata update warning: {ue}")
+
+                # 1-2. profiles 테이블 수정 (address 컬럼이 없을 경우 phone, full_name만 반영)
+                update_payload = {
+                    "full_name": full_name,
+                    "phone": phone
+                }
+                try:
+                    # address 컬럼 유무 확인 및 업데이트
+                    admin_sb.table("profiles").update({
+                        "full_name": full_name,
+                        "phone": phone,
+                        "address": address
+                    }).eq("id", user_id).execute()
+                except Exception:
+                    admin_sb.table("profiles").update(update_payload).eq("id", user_id).execute()
+
+            # 세션 업데이트
+            session["user_name"] = full_name
+
+            return redirect(url_for("auth.mypage", message="내 정보가 성공적으로 수정되었습니다."))
+        except Exception as e:
+            logger.error(f"프로필 수정 실패: {e}")
+            return redirect(url_for("auth.mypage", error="내 정보 수정 중 오류가 발생했습니다."))
+
+    # 2. GET: profiles 테이블 및 사용자 정보 조회
+    try:
+        if admin_sb:
+            # profiles 테이블 조회
+            res = admin_sb.table("profiles").select("*").eq("id", user_id).maybe_single().execute()
+            if res and res.data:
+                p = res.data
+                profile_data["email"] = p.get("email") or profile_data["email"]
+                profile_data["full_name"] = p.get("full_name") or profile_data["full_name"]
+                profile_data["phone"] = p.get("phone") or ""
+                profile_data["address"] = p.get("address") or ""
+                profile_data["customer_grade"] = p.get("customer_grade") or "BRONZE"
+                profile_data["total_order_amount"] = p.get("total_order_amount") or 0
+
+            # auth.users user_metadata에서 기본 배송지 보완 조회
+            u_res = admin_sb.auth.admin.get_user_by_id(user_id)
+            if u_res and u_res.user and u_res.user.user_metadata:
+                meta = u_res.user.user_metadata
+                if not profile_data["address"] and meta.get("address"):
+                    profile_data["address"] = meta.get("address")
+                if not profile_data["phone"] and meta.get("phone"):
+                    profile_data["phone"] = meta.get("phone")
+    except Exception as e:
+        logger.error(f"프로필 조회 실패: {e}")
+
+    return render_template("mypage.html", profile=profile_data)
 
 
 @bp.route("/logout", methods=["GET", "POST"])
