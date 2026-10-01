@@ -118,44 +118,57 @@
                     </div>
                 </div>
 
-                <!-- 상품 옵션 선택 (있을 경우) -->
-                {% if product.options %}
-                <div class="mb-4">
-                    <label for="optionSelect" class="form-label fw-bold small">옵션 선택</label>
-                    <select id="optionSelect" class="form-select form-select-lg">
-                        <option value="" selected>옵션을 선택해주세요</option>
-                        {% for opt in product.options %}
-                        <option value="{{ opt.id }}">
-                            {{ opt.option_value }} 
-                            {% if opt.additional_price and opt.additional_price > 0 %}
-                            (+{{ opt.additional_price|int }}원)
-                            {% endif %}
-                        </option>
+                <!-- 상품 색상 & 사이즈 옵션 선택 -->
+                <div class="mb-3">
+                    <label for="colorSelect" class="form-label fw-bold small text-secondary">
+                        <i class="bi bi-palette me-1"></i>색상 선택 <span class="text-danger">*</span>
+                    </label>
+                    <select id="colorSelect" class="form-select form-select-lg rounded-2 fs-6">
+                        <option value="" selected>색상을 선택해주세요</option>
+                        {% for col in product.colors %}
+                        <option value="{{ col }}">{{ col }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                {% endif %}
 
-                <!-- 수량 선택 -->
                 <div class="mb-4">
-                    <label class="form-label fw-bold small">수량</label>
+                    <label for="sizeSelect" class="form-label fw-bold small text-secondary">
+                        <i class="bi bi-rulers me-1"></i>사이즈 선택 <span class="text-danger">*</span>
+                    </label>
+                    <select id="sizeSelect" class="form-select form-select-lg rounded-2 fs-6" disabled>
+                        <option value="" selected>먼저 색상을 선택해주세요</option>
+                    </select>
+                    <!-- 선택된 옵션 재고 및 품절 안내 뱃지 -->
+                    <div id="optionStockAlert" class="mt-2 small d-none"></div>
+                </div>
+
+                <!-- 수량 선택 (1~10, 재고 제한) -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold small text-secondary mb-0">수량 선택</label>
+                        <span id="stockLimitHint" class="small text-muted"></span>
+                    </div>
                     <div class="input-group" style="width: 140px;">
                         <button class="btn btn-outline-secondary" type="button" id="qtyMinusBtn">-</button>
-                        <input type="number" id="productQuantity" class="form-control text-center" value="1" min="1" max="99">
+                        <input type="number" id="productQuantity" class="form-control text-center fw-bold" value="1" min="1" max="10">
                         <button class="btn btn-outline-secondary" type="button" id="qtyPlusBtn">+</button>
                     </div>
+                </div>
+
+                <!-- 장바구니 에러/성공 인라인 알림 -->
+                <div id="cartActionAlert" class="alert alert-dismissible fade show d-none mb-3 py-2 small" role="alert">
+                    <span id="cartActionMessage"></span>
+                    <button type="button" class="btn-close py-2" onclick="this.parentElement.classList.add('d-none')"></button>
                 </div>
 
                 <!-- 구매 및 장바구니 버튼 -->
                 <div class="d-grid gap-2 d-md-flex mt-4 pt-2">
                     <button type="button" 
-                            class="btn btn-outline-dark btn-lg flex-grow-1 add-to-cart-btn"
-                            data-id="{{ product.id }}"
-                            data-name="{{ product.name }}"
-                            data-price="{{ product.raw_price }}">
+                            class="btn btn-outline-dark btn-lg flex-grow-1 fw-bold rounded-1 py-3"
+                            id="detailAddToCartBtn">
                         <i class="bi bi-cart-plus me-1"></i> 장바구니 담기
                     </button>
-                    <button type="button" class="btn btn-warning btn-lg flex-grow-1 fw-bold text-dark" id="buyNowBtn">
+                    <button type="button" class="btn btn-warning btn-lg flex-grow-1 fw-bold text-dark rounded-1 py-3 shadow-sm" id="buyNowBtn">
                         바로 구매하기
                     </button>
                 </div>
@@ -283,11 +296,225 @@
 </div>
 
 <script>
-    // 수량 조절 버튼 스크립트
+    // 상품 상세 페이지: 색상 선택 시 사이즈/재고 동적 로드 및 장바구니 담기
     document.addEventListener("DOMContentLoaded", () => {
+        const productId = "{{ product.id }}";
+        const colorSelect = document.getElementById("colorSelect");
+        const sizeSelect = document.getElementById("sizeSelect");
         const qtyInput = document.getElementById("productQuantity");
         const minusBtn = document.getElementById("qtyMinusBtn");
         const plusBtn = document.getElementById("qtyPlusBtn");
+        const stockAlert = document.getElementById("optionStockAlert");
+        const stockLimitHint = document.getElementById("stockLimitHint");
+        const addToCartBtn = document.getElementById("detailAddToCartBtn");
+        const cartActionAlert = document.getElementById("cartActionAlert");
+        const cartActionMessage = document.getElementById("cartActionMessage");
+        const cartToastElement = document.getElementById("cartToast");
+        const toastMessage = document.getElementById("toastMessage");
+        const cartCountBadge = document.getElementById("cartCountBadge");
+
+        let currentOptionStock = null;
+        let cartToast = null;
+        if (cartToastElement && window.bootstrap) {
+            cartToast = new bootstrap.Toast(cartToastElement, { delay: 2500 });
+        }
+
+        // 인라인 알림 표시 헬퍼
+        const showInlineAlert = (msg, isSuccess = false) => {
+            if (!cartActionAlert || !cartActionMessage) return;
+            cartActionAlert.className = `alert ${isSuccess ? 'alert-success' : 'alert-danger'} alert-dismissible fade show mb-3 py-2 small`;
+            cartActionMessage.innerHTML = isSuccess 
+                ? `<i class="bi bi-check-circle-fill me-1"></i>${msg}`
+                : `<i class="bi bi-exclamation-triangle-fill me-1"></i>${msg}`;
+            cartActionAlert.classList.remove("d-none");
+        };
+
+        // 1. 색상 선택 시 해당 색상의 사이즈 목록 fetch
+        if (colorSelect && sizeSelect) {
+            colorSelect.addEventListener("change", async () => {
+                const selectedColor = colorSelect.value;
+                sizeSelect.innerHTML = '<option value="">사이즈를 선택해주세요</option>';
+                sizeSelect.disabled = true;
+                currentOptionStock = null;
+                qtyInput.max = 10;
+                qtyInput.value = 1;
+                if (stockAlert) stockAlert.className = "d-none";
+                if (stockLimitHint) stockLimitHint.textContent = "";
+
+                if (!selectedColor) {
+                    sizeSelect.innerHTML = '<option value="">먼저 색상을 선택해주세요</option>';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/products/${productId}/options?color=${encodeURIComponent(selectedColor)}`);
+                    const data = await response.json();
+                    const sizes = data.sizes || [];
+
+                    if (sizes.length === 0) {
+                        sizeSelect.innerHTML = '<option value="">선택 가능한 사이즈가 없습니다</option>';
+                        return;
+                    }
+
+                    sizes.forEach((opt) => {
+                        const optElem = document.createElement("option");
+                        optElem.value = opt.id;
+                        optElem.setAttribute("data-stock", opt.stock);
+
+                        if (opt.stock === 0) {
+                            optElem.textContent = `${opt.size} (품절)`;
+                            optElem.disabled = true; // 재고 0은 품절 표시 및 선택 불가
+                            optElem.className = "text-muted bg-light";
+                        } else if (opt.stock === 1) {
+                            optElem.textContent = `${opt.size} (품절 임박 - 1개 남음)`;
+                        } else {
+                            optElem.textContent = `${opt.size} (재고: ${opt.stock}개)`;
+                        }
+                        sizeSelect.appendChild(optElem);
+                    });
+
+                    sizeSelect.disabled = false;
+                } catch (err) {
+                    console.error("사이즈 목록 조회 실패:", err);
+                    sizeSelect.innerHTML = '<option value="">옵션을 불러오지 못했습니다</option>';
+                }
+            });
+
+            // 2. 사이즈 선택 시 재고 제한(max) 및 품절 안내 갱신
+            sizeSelect.addEventListener("change", () => {
+                const selectedOption = sizeSelect.options[sizeSelect.selectedIndex];
+                const optId = sizeSelect.value;
+                if (!optId) {
+                    currentOptionStock = null;
+                    qtyInput.max = 10;
+                    qtyInput.value = 1;
+                    if (stockAlert) stockAlert.className = "d-none";
+                    if (stockLimitHint) stockLimitHint.textContent = "";
+                    return;
+                }
+
+                const stock = parseInt(selectedOption.getAttribute("data-stock") || "0", 10);
+                currentOptionStock = stock;
+
+                // 수량 max 제한: 1~10 중 재고 이하
+                const maxQty = Math.max(1, Math.min(10, stock));
+                qtyInput.max = maxQty;
+                if (parseInt(qtyInput.value) > maxQty) {
+                    qtyInput.value = maxQty;
+                }
+
+                if (stockAlert) {
+                    if (stock === 0) {
+                        stockAlert.className = "mt-2 small text-danger fw-bold";
+                        stockAlert.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i>현재 품절된 옵션입니다.';
+                    } else if (stock === 1) {
+                        stockAlert.className = "mt-2 small text-warning fw-bold";
+                        stockAlert.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i>품절 임박! 마지막 1개 남았습니다.';
+                    } else {
+                        stockAlert.className = "mt-2 small text-success";
+                        stockAlert.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>선택 가능 (남은 재고: ${stock}개)`;
+                    }
+                }
+
+                if (stockLimitHint) {
+                    stockLimitHint.textContent = `(최대 ${maxQty}개 주문 가능)`;
+                }
+            });
+        }
+
+        // 3. 수량 조절 버튼 (+ / -)
+        if (minusBtn && qtyInput) {
+            minusBtn.addEventListener("click", () => {
+                let val = parseInt(qtyInput.value) || 1;
+                if (val > 1) qtyInput.value = val - 1;
+            });
+        }
+
+        if (plusBtn && qtyInput) {
+            plusBtn.addEventListener("click", () => {
+                let val = parseInt(qtyInput.value) || 1;
+                const maxVal = parseInt(qtyInput.max) || 10;
+                if (val < maxVal) {
+                    qtyInput.value = val + 1;
+                } else {
+                    showInlineAlert(`해당 옵션은 한 번에 최대 ${maxVal}개까지 담을 수 있습니다.`);
+                }
+            });
+        }
+
+        // 4. 장바구니 담기 버튼 클릭 (POST /cart/add)
+        if (addToCartBtn) {
+            addToCartBtn.addEventListener("click", async () => {
+                if (!colorSelect.value) {
+                    showInlineAlert("먼저 색상을 선택해 주세요.");
+                    colorSelect.focus();
+                    return;
+                }
+
+                if (!sizeSelect.value) {
+                    showInlineAlert("사이즈를 선택해 주세요.");
+                    sizeSelect.focus();
+                    return;
+                }
+
+                const optionId = sizeSelect.value;
+                const quantity = parseInt(qtyInput.value, 10) || 1;
+
+                if (currentOptionStock !== null && currentOptionStock <= 0) {
+                    showInlineAlert("선택하신 옵션은 품절되어 장바구니에 담을 수 없습니다.");
+                    return;
+                }
+
+                addToCartBtn.disabled = true;
+                addToCartBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>담는 중...';
+
+                try {
+                    const response = await fetch("/cart/add", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            product_option_id: optionId,
+                            quantity: quantity
+                        })
+                    });
+
+                    // 401: 비로그인 시 로그인 페이지로 이동
+                    if (response.status === 401) {
+                        const errData = await response.json();
+                        alert("로그인이 필요한 서비스입니다. 로그인 페이지로 이동합니다.");
+                        window.location.href = errData.redirect || "/auth/login";
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        showInlineAlert(data.message || "장바구니에 담겼습니다", true);
+
+                        // 토스트 알림
+                        if (cartToast && toastMessage) {
+                            toastMessage.innerHTML = `<strong>{{ product.name }}</strong> (${colorSelect.value}/${sizeSelect.options[sizeSelect.selectedIndex].text.split(' ')[0]}) ${quantity}개가 장바구니에 담겼습니다! 🛒`;
+                            cartToast.show();
+                        }
+
+                        // 헤더 장바구니 배지 업데이트
+                        if (cartCountBadge && data.cart_count !== undefined) {
+                            cartCountBadge.textContent = data.cart_count;
+                            cartCountBadge.classList.add("badge-bounce");
+                            setTimeout(() => cartCountBadge.classList.remove("badge-bounce"), 300);
+                        }
+                    } else {
+                        showInlineAlert(data.message || "장바구니 담기에 실패했습니다.");
+                    }
+                } catch (err) {
+                    console.error("장바구니 담기 오류:", err);
+                    showInlineAlert("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+                } finally {
+                    addToCartBtn.disabled = false;
+                    addToCartBtn.innerHTML = '<i class="bi bi-cart-plus me-1"></i> 장바구니 담기';
+                }
+            });
+        }
         const buyNowBtn = document.getElementById("buyNowBtn");
 
         if (minusBtn && qtyInput) {

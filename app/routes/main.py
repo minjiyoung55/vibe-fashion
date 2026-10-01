@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from flask import Blueprint, render_template, request, jsonify, session
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from dotenv import load_dotenv
 from app.services.supabase_client import get_supabase_client, get_supabase_admin_client
 
@@ -476,14 +476,24 @@ def product_detail(product_id: str):
             item = response.data
 
             if item:
-                # 상품 옵션 조회
+                # 상품 옵션 조회 (Day 5 색상/사이즈 조합 옵션 포함)
                 options_res = (
                     supabase.table("product_options")
                     .select("*")
                     .eq("product_id", product_id)
+                    .order("id")
                     .execute()
                 )
                 options = options_res.data or []
+
+                # 색상(color) 목록 DISTINCT 추출 (NULL 제외)
+                distinct_colors = []
+                seen_colors = set()
+                for opt in options:
+                    c = opt.get("color")
+                    if c and c not in seen_colors:
+                        seen_colors.add(c)
+                        distinct_colors.append(c)
 
                 # 이미지 목록 정리 (display_order 기준 정렬)
                 images = item.get("product_images") or []
@@ -526,6 +536,7 @@ def product_detail(product_id: str):
                     "category": category_name,
                     "images": images,
                     "options": options,
+                    "colors": distinct_colors,
                 }
 
                 # 상품 사진 후기(Reviews) 목록 조회
@@ -574,5 +585,158 @@ def product_detail(product_id: str):
         ), 404
 
     return render_template("product_detail.html", product=product)
+
+
+# ==============================================================
+# 색상별 사이즈/재고 목록 조회 API (GET /api/products/<product_id>/options?color=...)
+# ==============================================================
+@bp.route("/api/products/<product_id>/options")
+def api_product_options_by_color(product_id: str):
+    """
+    선택된 색상(color)에 해당하는 사이즈(size) 및 재고(stock) 목록을 반환합니다.
+    """
+    color = (request.args.get("color") or "").strip()
+    if not color:
+        return jsonify({"sizes": []})
+
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return jsonify({"sizes": [], "error": "데이터베이스 연결 실패"}), 500
+
+        res = (
+            supabase.table("product_options")
+            .select("id, color, size, stock, additional_price")
+            .eq("product_id", product_id)
+            .eq("color", color)
+            .order("id")
+            .execute()
+        )
+        sizes = res.data or []
+        return jsonify({"sizes": sizes})
+    except Exception as e:
+        logger.error(f"색상별 사이즈 조회 실패: {e}")
+        return jsonify({"sizes": [], "error": str(e)}), 500
+
+
+# ==============================================================
+# 장바구니 담기 API (POST /cart/add)
+# ==============================================================
+@bp.route("/cart/add", methods=["POST"])
+def cart_add():
+    """
+    장바구니 담기 처리:
+    - 요청 body: product_option_id, quantity
+    - 비로그인 시: /auth/login 으로 리다이렉트
+    - 재고 검증: stock < quantity 이면 "재고가 부족합니다(현재 N개)" 에러
+    - carts 테이블에 upsert (기존 수량에 누적)
+    - 누적 수량이 재고를 초과하는 경우 에러 처리
+    - 성공 시 JSON 반환: {"success": true, "message": "장바구니에 담겼습니다"}
+    """
+    user_id = session.get("user_id")
+
+    # 로그인 검증: 비로그인 시 /auth/login 으로 리다이렉트 (JSON 또는 302 리다이렉트)
+    if not user_id:
+        if request.is_json:
+            return jsonify({
+                "success": False,
+                "message": "로그인이 필요한 서비스입니다.",
+                "redirect": url_for("auth.login")
+            }), 401
+        return redirect(url_for("auth.login"))
+
+    # 요청 데이터 파싱 (JSON 또는 form)
+    if request.is_json:
+        data = request.get_json() or {}
+        option_id = data.get("product_option_id")
+        quantity = data.get("quantity")
+    else:
+        option_id = request.form.get("product_option_id")
+        quantity = request.form.get("quantity")
+
+    try:
+        quantity = int(quantity or 1)
+    except (ValueError, TypeError):
+        quantity = 1
+
+    if not option_id or quantity <= 0:
+        return jsonify({"success": False, "message": "올바른 옵션과 수량을 선택해 주세요."}), 400
+
+    admin_sb = get_supabase_admin_client()
+    if not admin_sb:
+        return jsonify({"success": False, "message": "서버 연결에 실패했습니다."}), 500
+
+    try:
+        # 1. 해당 옵션의 현재 재고(stock) 및 상품 ID 조회
+        opt_res = (
+            admin_sb.table("product_options")
+            .select("id, product_id, stock, color, size")
+            .eq("id", option_id)
+            .maybe_single()
+            .execute()
+        )
+        option = opt_res.data if opt_res else None
+
+        if not option:
+            return jsonify({"success": False, "message": "선택하신 옵션을 찾을 수 없습니다."}), 404
+
+        current_stock = int(option.get("stock") or 0)
+        product_id = option.get("product_id")
+
+        # 2. 1차 재고 검증: 요청 수량이 현재 재고보다 많은 경우
+        if current_stock < quantity:
+            return jsonify({
+                "success": False,
+                "message": f"재고가 부족합니다(현재 {current_stock}개)"
+            }), 400
+
+        # 3. 기존 장바구니에 담긴 동일 옵션 수량 확인
+        cart_res = (
+            admin_sb.table("carts")
+            .select("id, quantity")
+            .eq("user_id", user_id)
+            .eq("product_id", product_id)
+            .eq("option_id", option_id)
+            .maybe_single()
+            .execute()
+        )
+        existing_cart = cart_res.data if cart_res else None
+        existing_qty = int(existing_cart.get("quantity") or 0) if existing_cart else 0
+
+        total_new_qty = existing_qty + quantity
+
+        # 4. 2차 재고 검증: 누적 수량이 재고를 초과하는 경우
+        if total_new_qty > current_stock:
+            return jsonify({
+                "success": False,
+                "message": f"재고가 부족합니다(현재 {current_stock}개)"
+            }), 400
+
+        # 5. carts 테이블에 저장 (upsert: user_id, product_id, option_id 중복 시 수량 업데이트)
+        upsert_payload = {
+            "user_id": user_id,
+            "product_id": product_id,
+            "option_id": option_id,
+            "quantity": total_new_qty
+        }
+        admin_sb.table("carts").upsert(
+            upsert_payload,
+            on_conflict="user_id,product_id,option_id"
+        ).execute()
+
+        # 전체 장바구니 항목 개수 조회 (헤더 배지 갱신용)
+        count_res = admin_sb.table("carts").select("quantity").eq("user_id", user_id).execute()
+        cart_total_count = sum(int(item.get("quantity") or 0) for item in (count_res.data or []))
+
+        return jsonify({
+            "success": True,
+            "message": "장바구니에 담겼습니다",
+            "cart_count": cart_total_count
+        })
+
+    except Exception as e:
+        logger.error(f"장바구니 담기 실패: {e}")
+        return jsonify({"success": False, "message": f"장바구니 담기 중 오류가 발생했습니다: {str(e)}"}), 500
+
 
 
