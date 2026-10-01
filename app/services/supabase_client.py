@@ -35,11 +35,24 @@ def get_supabase_admin_client() -> Client | None:
     supabase_url = os.getenv("SUPABASE_URL")
     service_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
+    # 디버깅: 환경 변수 로깅
+    if not supabase_url:
+        logger.error("❌ SUPABASE_URL 환경 변수가 설정되지 않았습니다!")
+    else:
+        logger.info(f"✅ SUPABASE_URL 로드됨: {supabase_url[:30]}...")
+    
+    if not service_key:
+        logger.error("❌ SUPABASE_SERVICE_KEY 또는 SUPABASE_ANON_KEY가 설정되지 않았습니다!")
+    else:
+        logger.info(f"✅ Service Key 로드됨: {service_key[:30]}...")
+
     if not supabase_url or not service_key:
         return None
 
     try:
-        return create_client(supabase_url, service_key)
+        client = create_client(supabase_url, service_key)
+        logger.info("✅ Supabase Admin 클라이언트 생성 성공")
+        return client
     except Exception as e:
-        logger.error(f"Supabase Admin 클라이언트 생성 실패: {e}")
+        logger.error(f"❌ Supabase Admin 클라이언트 생성 실패: {e}")
         return None
