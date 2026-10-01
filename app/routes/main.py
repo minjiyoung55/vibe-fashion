@@ -990,15 +990,47 @@ def delete_cart_item(cart_id: int):
             .execute()
         )
 
-        # 4. 남은 장바구니 아이템 수량 합계 조회
-        remaining_res = admin_sb.table("carts").select("quantity").eq("user_id", user_id).execute()
-        cart_total_count = sum(int(item.get("quantity") or 0) for item in (remaining_res.data or []))
+        # 4. 남은 장바구니 아이템 수량 합계 조회 및 총액 계산
+        remaining_res = (
+            admin_sb.table("carts")
+            .select(
+                "id, quantity, products(id, price, discount_rate), product_options(id, additional_price)"
+            )
+            .eq("user_id", user_id)
+            .execute()
+        )
+        remaining_items = remaining_res.data or []
+        
+        cart_total_count = 0
+        cart_total_amount = 0
+        
+        for item in remaining_items:
+            qty = int(item.get("quantity") or 0)
+            cart_total_count += qty
+            
+            # 가격 계산
+            product = item.get("products") or {}
+            option = item.get("product_options") or {}
+            
+            raw_price = float(product.get("price") or 0)
+            discount_rate = float(product.get("discount_rate") or 0)
+            additional_price = float(option.get("additional_price") or 0)
+            
+            # 실제 단가 계산 (할인 적용 + 추가 옵션가)
+            if discount_rate > 0:
+                unit_price = round(raw_price * (1 - discount_rate / 100)) + additional_price
+            else:
+                unit_price = raw_price + additional_price
+            
+            cart_total_amount += int(unit_price * qty)
 
         return jsonify({
             "success": True,
             "message": "장바구니에서 삭제되었습니다.",
             "cart_id": cart_id,
-            "cart_count": cart_total_count
+            "cart_count": cart_total_count,
+            "cart_total_amount": cart_total_amount,
+            "formatted_cart_total": f"{cart_total_amount:,}원"
         })
 
     except Exception as e:

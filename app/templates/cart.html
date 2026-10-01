@@ -248,8 +248,9 @@
                 // 헤더 장바구니 배지 업데이트
                 updateCartBadge(data.cart_count);
 
-                // 총액 재계산
-                updateCartTotal();
+                // 주문 요약 직접 업데이트 (서버 응답값 사용)
+                document.getElementById('totalQuantity').textContent = `${data.cart_count}개`;
+                document.getElementById('totalAmount').textContent = data.formatted_cart_total;
 
                 showAlert('삭제되었습니다.', 'success');
                 deleteConfirmModal.hide();
@@ -308,7 +309,7 @@
                     // 헤더 배지 업데이트
                     updateCartBadge(data.cart_count);
 
-                    // 총액 재계산
+                    // 주문 요약 직접 업데이트 (서버 응답값 사용)
                     updateCartTotal();
                 } else {
                     showAlert(data.message || '수량 변경에 실패했습니다.', 'danger');
