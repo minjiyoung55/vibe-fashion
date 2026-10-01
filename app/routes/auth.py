@@ -561,18 +561,91 @@ def mypage():
                 profile_data["customer_grade"] = p.get("customer_grade") or "BRONZE"
                 profile_data["total_order_amount"] = p.get("total_order_amount") or 0
 
-            # auth.users user_metadata에서 기본 배송지 보완 조회
+            # auth.users user_metadata에서 기본 배송지 보완 조회 및 소셜 로그인 여부 확인
             u_res = admin_sb.auth.admin.get_user_by_id(user_id)
-            if u_res and u_res.user and u_res.user.user_metadata:
-                meta = u_res.user.user_metadata
-                if not profile_data["address"] and meta.get("address"):
-                    profile_data["address"] = meta.get("address")
-                if not profile_data["phone"] and meta.get("phone"):
-                    profile_data["phone"] = meta.get("phone")
+            if u_res and u_res.user:
+                if u_res.user.user_metadata:
+                    meta = u_res.user.user_metadata
+                    if not profile_data["address"] and meta.get("address"):
+                        profile_data["address"] = meta.get("address")
+                    if not profile_data["phone"] and meta.get("phone"):
+                        profile_data["phone"] = meta.get("phone")
+
+                # 이메일/비밀번호 가입 여부 확인 (소셜 가입자 제외)
+                app_meta = u_res.user.app_metadata or {}
+                provider = app_meta.get("provider", "email")
+                providers = app_meta.get("providers", [])
+                profile_data["is_email_user"] = (provider == "email" or "email" in providers)
     except Exception as e:
         logger.error(f"프로필 조회 실패: {e}")
 
+    # 기본값: 카카오 등 소셜 이메일이 아닌 경우 이메일 사용자로 간주
+    if "is_email_user" not in profile_data:
+        profile_data["is_email_user"] = not session.get("user_email", "").startswith("kakao_")
+
     return render_template("mypage.html", profile=profile_data)
+
+
+# ==============================================================
+# [9] POST /mypage/change-password - 비밀번호 변경
+# ==============================================================
+@bp.route("/mypage/change-password", methods=["POST"])
+@bp.route("/change-password", methods=["POST"])
+@login_required
+def change_password():
+    """
+    마이페이지 내 비밀번호 변경 처리:
+    1. 현재 비밀번호 검증 (재로그인 시도 방식)
+    2. 새 비밀번호 유효성 검사 (최소 6자, 확인 일치, 현재 비밀번호와 상이)
+    3. Supabase update_user_by_id()를 통한 비밀번호 갱신
+    """
+    user_id = session.get("user_id")
+    email = session.get("user_email")
+
+    current_password = (request.form.get("current_password") or "").strip()
+    new_password = (request.form.get("new_password") or "").strip()
+    new_password_confirm = (request.form.get("new_password_confirm") or "").strip()
+
+    if not current_password or not new_password or not new_password_confirm:
+        return redirect(url_for("auth.mypage", error="모든 비밀번호 항목을 입력해 주세요."))
+
+    if len(new_password) < 6:
+        return redirect(url_for("auth.mypage", error="비밀번호는 최소 6자 이상이어야 합니다."))
+
+    if new_password != new_password_confirm:
+        return redirect(url_for("auth.mypage", error="새 비밀번호와 비밀번호 확인이 일치하지 않습니다."))
+
+    if current_password == new_password:
+        return redirect(url_for("auth.mypage", error="새로운 비밀번호가 현재 비밀번호와 동일합니다"))
+
+    # 1. 기존 비밀번호 검증 (Supabase sign_in_with_password 호출)
+    supabase = get_supabase_client()
+    if not supabase:
+        return redirect(url_for("auth.mypage", error="인증 서버 연결에 실패했습니다."))
+
+    try:
+        supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": current_password
+        })
+    except Exception as e:
+        logger.warning(f"현재 비밀번호 검증 실패: {e}")
+        return redirect(url_for("auth.mypage", error="현재 비밀번호가 일치하지 않습니다"))
+
+    # 2. Supabase update_user_by_id()를 사용하여 비밀번호 변경
+    admin_sb = get_supabase_admin_client()
+    if not admin_sb:
+        return redirect(url_for("auth.mypage", error="서버 권한 설정이 올바르지 않습니다."))
+
+    try:
+        admin_sb.auth.admin.update_user_by_id(
+            user_id,
+            {"password": new_password}
+        )
+        return redirect(url_for("auth.mypage", message="비밀번호가 변경되었습니다"))
+    except Exception as e:
+        logger.error(f"비밀번호 변경 중 오류: {e}")
+        return redirect(url_for("auth.mypage", error=f"비밀번호 변경 처리 중 오류가 발생했습니다: {str(e)}"))
 
 
 @bp.route("/logout", methods=["GET", "POST"])

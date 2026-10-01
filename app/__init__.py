@@ -38,4 +38,8 @@ def create_app(test_config=None):
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
 
+    # 최상위 /mypage 및 /mypage/change-password 직접 접근 지원
+    app.add_url_rule("/mypage", endpoint="mypage_root", view_func=auth.mypage, methods=["GET", "POST"])
+    app.add_url_rule("/mypage/change-password", endpoint="change_password_root", view_func=auth.change_password, methods=["POST"])
+
     return app
