@@ -353,6 +353,7 @@ def reset_password():
 def kakao_login():
     """
     카카오 OAuth 로그인 페이지로 리다이렉트합니다.
+    PKCE 보안 검증을 위해 생성된 code_verifier를 Flask 세션에 안전하게 저장합니다.
     """
     supabase = get_supabase_client()
     if not supabase:
@@ -369,6 +370,15 @@ def kakao_login():
                 "redirect_to": redirect_to
             }
         })
+
+        # PKCE flow: 클라이언트 메모리에 생성된 code_verifier를 Flask 세션에 보관
+        try:
+            storage_key = f"{supabase.auth._storage_key}-code-verifier"
+            code_verifier = supabase.auth._storage.get_item(storage_key)
+            if code_verifier:
+                session["oauth_code_verifier"] = code_verifier
+        except Exception as se:
+            logger.warning(f"code_verifier 세션 저장 경고: {se}")
 
         if oauth_res and getattr(oauth_res, "url", None):
             return redirect(oauth_res.url)
@@ -398,7 +408,6 @@ def auth_callback():
         return redirect(url_for("auth.login", error=f"소셜 로그인 실패: {error_description or error}"))
 
     if not code:
-        # 해시(#access_token=...)로 넘어오는 경우를 대비한 템플릿 처리 또는 에러
         return redirect(url_for("auth.login", error="인증 코드가 전달되지 않았습니다."))
 
     supabase = get_supabase_client()
@@ -406,8 +415,15 @@ def auth_callback():
         return redirect(url_for("auth.login", error="인증 서버 연결에 실패했습니다."))
 
     try:
+        # Flask 세션에 보관해 두었던 code_verifier 복원
+        code_verifier = session.pop("oauth_code_verifier", None)
+
+        exchange_params = {"auth_code": code}
+        if code_verifier:
+            exchange_params["code_verifier"] = code_verifier
+
         # code를 session으로 교환
-        res = supabase.auth.exchange_code_for_session({"auth_code": code})
+        res = supabase.auth.exchange_code_for_session(exchange_params)
         if not res.user:
             return redirect(url_for("auth.login", error="카카오 로그인 인증 처리에 실패했습니다."))
 
