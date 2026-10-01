@@ -84,26 +84,27 @@ body {
     color: #ffffff !important;
 }
 
+/* 상단 우측 액션 메뉴 (적립금, 회원가입, 로그인, 로그아웃, 장바구니) 네모(직각/소형 각진 모서리) 스타일 */
+#authNavContainer .btn,
+#authNavContainer .badge:not(#cartCountBadge) {
+    border-radius: 4px !important; /* 각진 네모 스타일 */
+}
+
 /* 5. 히어로 섹션 (Hero Section) - 연두색 배경 & 분홍색 VIBE FASHION 포인트 */
 .hero-section {
     /* 트렌디하고 화사한 연두색 그라디언트 배경 */
     background: linear-gradient(135deg, #e8fcd9 0%, #cbf3a1 50%, #b4ec84 100%) !important;
-    padding-top: 5rem !important;
-    padding-bottom: 5.5rem !important;
-    text-align: center;
+    padding-top: 4.5rem !important;
+    padding-bottom: 5rem !important;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* 히어로 내부 텍스트 및 버튼들을 중앙 정렬 구조로 재구성 */
 .hero-section .row {
-    justify-content: center;
+    align-items: center;
 }
 
 .hero-section .col-lg-7 {
-    width: 100%;
-    max-width: 820px;
-    margin: 0 auto;
-    text-align: center;
+    max-width: 100%;
 }
 
 /* 컬렉션 뱃지 */
@@ -118,7 +119,7 @@ body {
 
 /* 메인 타이틀 */
 .hero-title {
-    font-size: clamp(2rem, 4.5vw, 3.25rem) !important;
+    font-size: clamp(2rem, 3.8vw, 3.1rem) !important;
     font-family: 'Noto Sans KR', sans-serif;
     font-weight: 800;
     color: #1a2a4a !important;
@@ -140,17 +141,8 @@ body {
 .hero-lead {
     font-size: 1.08rem;
     color: #334155 !important;
-    margin-left: auto;
-    margin-right: auto;
-    padding-right: 0 !important;
-    max-width: 620px;
+    max-width: 580px;
     font-weight: 500;
-}
-
-/* CTA 버튼 중앙 정렬 컨테이너 */
-.hero-section .d-flex.flex-wrap {
-    justify-content: center;
-    margin-top: 2rem;
 }
 
 /* '지금 쇼핑하기' CTA 버튼 */
@@ -185,9 +177,27 @@ body {
     border-color: #1a2a4a;
 }
 
-/* 히어로 배너 이미지 영역 숨김 처리하여 중앙 텍스트 집중 */
-.hero-section .col-lg-5 {
-    display: none !important;
+/* 히어로 배너 이미지 래퍼 및 사진 스타일 */
+.hero-image-wrapper {
+    max-width: 360px;
+    max-height: 480px;
+    border-radius: 24px !important;
+    box-shadow: 0 20px 40px rgba(26, 42, 74, 0.18) !important;
+    border: 4px solid #ffffff;
+    transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.hero-image-wrapper:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 28px 50px rgba(26, 42, 74, 0.24) !important;
+}
+
+.hero-image {
+    width: 100%;
+    height: 460px;
+    object-fit: cover;
+    object-position: center;
+    display: block;
 }
 
 /* 6. 상품 카드 (Product Card) 호버 효과 및 디자인 개선 */

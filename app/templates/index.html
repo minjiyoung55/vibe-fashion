@@ -7,9 +7,9 @@
 <!-- 1. 히어로 섹션 (Hero Section) -->
 <!-- ============================================================== -->
 <section class="hero-section py-5 position-relative overflow-hidden">
-    <div class="container py-lg-5 position-relative z-1">
+    <div class="container py-lg-4 position-relative z-1">
         <div class="row align-items-center gy-4">
-            <div class="col-lg-7">
+            <div class="col-lg-7 text-lg-start text-center">
                 <span class="badge px-3 py-2 rounded-pill fw-semibold mb-3 hero-badge">
                     2026 S/S NEW COLLECTION
                 </span>
@@ -17,11 +17,11 @@
                     당신의 일상을 스타일리시하게<br>
                     <span class="hero-brand-name">VIBE FASHION</span>
                 </h1>
-                <p class="lead mb-4 pe-lg-5 hero-lead">
+                <p class="lead mb-4 pe-lg-4 hero-lead">
                     트렌디한 감각과 미니멀한 실루엣이 만나는 곳.<br>
                     지금 가장 주목받는 데일리 룩 컬렉션을 특별한 혜택으로 만나보세요.
                 </p>
-                <div class="d-flex flex-wrap gap-3">
+                <div class="d-flex flex-wrap gap-3 justify-content-lg-start justify-content-center">
                     <a href="#products-section" class="btn btn-dark btn-lg px-4 py-2 fw-semibold rounded-pill shadow-sm hero-shop-btn">
                         지금 쇼핑하기 <i class="bi bi-arrow-right ms-1"></i>
                     </a>
@@ -30,12 +30,19 @@
                     </a>
                 </div>
             </div>
-            <div class="col-lg-5 d-none d-lg-block">
-                <!-- 히어로 배너 대표 이미지 -->
-                <div class="hero-image-wrapper shadow-lg rounded-4 overflow-hidden">
-                    <img src="https://picsum.photos/seed/vibe-hero/700/800" 
-                         alt="VIBE FASHION 시즌 메인 화보" 
+            <div class="col-lg-5 text-center">
+                <!-- 히어로 배너 대표 이미지 (보내주신 감성 원피스 사진) -->
+                <div class="hero-image-wrapper shadow-lg rounded-4 overflow-hidden position-relative mx-auto">
+                    <img src="{{ url_for('static', filename='img/hero_dress.png') }}" 
+                         alt="VIBE FASHION 2026 S/S 신상 슬리브리스 드레스 컬렉션" 
                          class="img-fluid hero-image w-100">
+                    <div class="position-absolute bottom-0 start-0 w-100 p-3 bg-gradient-dark text-white text-start d-flex justify-content-between align-items-end" style="background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.65) 100%);">
+                        <div>
+                            <span class="badge bg-warning text-dark px-2 py-1 rounded-pill small fw-bold mb-1">MD PICK</span>
+                            <div class="fw-bold small">클래식 실크 슬립 원피스</div>
+                        </div>
+                        <span class="text-white-50 small">2026 S/S</span>
+                    </div>
                 </div>
             </div>
         </div>

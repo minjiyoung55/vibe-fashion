@@ -100,9 +100,9 @@
                         </div>
                     </div>
                     {% if not session.get('user_id') %}
-                        <button type="button" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#authModal" data-tab="signup">
+                        <a href="{{ url_for('auth.signup') }}" class="btn btn-dark btn-sm rounded-pill px-3 fw-bold">
                             가입하기
-                        </button>
+                        </a>
                     {% endif %}
                 </div>
 

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}회원가입 - VIBE FASHION{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <!-- 에러 메시지 (URL 파라미터 error) -->
+            {% set err = request.args.get('error') %}
+            {% if err %}
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-x-circle-fill me-2"></i>{{ err }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-4">
+                        <div class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold mb-2">
+                            <i class="bi bi-gift-fill text-danger me-1"></i>신규 가입 시 2,000P 즉시 지급
+                        </div>
+                        <h3 class="fw-bold text-dark">회원가입</h3>
+                        <p class="text-secondary small mb-0">이메일 인증을 통해 안전하게 계정을 생성하세요.</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('auth.signup') }}">
+                        <div class="mb-3">
+                            <label for="signupFullName" class="form-label small fw-semibold text-secondary">이름 (또는 닉네임)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-person text-secondary"></i></span>
+                                <input type="text" class="form-control" id="signupFullName" name="full_name" placeholder="홍길동" required autofocus>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="signupEmail" class="form-label small fw-semibold text-secondary">이메일 주소</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-envelope text-secondary"></i></span>
+                                <input type="email" class="form-control" id="signupEmail" name="email" placeholder="example@email.com" required>
+                            </div>
+                            <div class="form-text small text-muted">가입 완료를 위해 인증 링크가 포함된 메일이 전송됩니다.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="signupPassword" class="form-label small fw-semibold text-secondary">비밀번호</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-lock text-secondary"></i></span>
+                                <input type="password" class="form-control" id="signupPassword" name="password" placeholder="최소 6자 이상" minlength="6" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="signupPasswordConfirm" class="form-label small fw-semibold text-secondary">비밀번호 확인</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-lock-fill text-secondary"></i></span>
+                                <input type="password" class="form-control" id="signupPasswordConfirm" name="password_confirm" placeholder="비밀번호 재입력" minlength="6" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100 py-2 rounded-3 fw-bold text-dark mt-2 shadow-sm">
+                            가입하고 인증 메일 받기
+                        </button>
+                    </form>
+
+                    <!-- 소셜 간편가입 구분선 및 카카오 버튼 -->
+                    <div class="position-relative my-4 text-center">
+                        <hr class="text-muted">
+                        <span class="position-absolute top-50 start-50 translate-middle bg-white px-2 small text-muted">또는</span>
+                    </div>
+
+                    <a href="{{ url_for('auth.kakao_login') }}" class="btn w-100 py-2.5 rounded-3 fw-bold d-flex align-items-center justify-content-center text-dark shadow-sm border-0" style="background-color: #FEE500; font-size: 0.95rem;">
+                        <svg class="me-2" width="18" height="18" viewBox="0 0 24 24" fill="#000000">
+                            <path d="M12 3C6.477 3 2 6.477 2 10.768c0 2.766 1.87 5.187 4.673 6.556l-1.189 4.364c-.105.385.334.69.64.482l5.148-3.414c.24.02.484.032.728.032 5.523 0 10-3.477 10-7.768S17.523 3 12 3z"/>
+                        </svg>
+                        카카오로 3초 만에 시작하기 (+2,000P)
+                    </a>
+
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <p class="small text-secondary mb-2">이미 계정이 있으신가요?</p>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                            로그인하기
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

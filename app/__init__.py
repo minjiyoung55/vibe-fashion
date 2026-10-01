@@ -33,8 +33,9 @@ def create_app(test_config=None):
         pass
 
     # Blueprint(경로/라우트 분리) 등록
-    from app.routes import main
+    from app.routes import main, auth
 
     app.register_blueprint(main.bp)
+    app.register_blueprint(auth.bp)
 
     return app

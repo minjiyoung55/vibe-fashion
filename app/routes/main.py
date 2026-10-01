@@ -1,9 +1,9 @@
 import os
 import sys
 import logging
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session
 from dotenv import load_dotenv
-from supabase import create_client, Client
+from app.services.supabase_client import get_supabase_client, get_supabase_admin_client
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -13,45 +13,6 @@ load_dotenv()
 
 # 'main' 블루프린트 생성
 bp = Blueprint("main", __name__)
-
-
-def get_supabase_client() -> Client | None:
-    """
-    .env 환경 변수(SUPABASE_URL, SUPABASE_ANON_KEY)를 읽어
-    supabase-py 클라이언트를 초기화합니다.
-    """
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_ANON_KEY")
-
-    if not supabase_url or not supabase_key:
-        print("[Supabase Error] SUPABASE_URL 또는 SUPABASE_ANON_KEY 환경 변수가 설정되지 않았습니다.", file=sys.stderr)
-        logger.error("SUPABASE_URL 또는 SUPABASE_ANON_KEY 환경 변수가 설정되지 않았습니다.")
-        return None
-
-    try:
-        return create_client(supabase_url, supabase_key)
-    except Exception as e:
-        print(f"[Supabase Error] Supabase 클라이언트 연결 실패: {e}", file=sys.stderr)
-        logger.error(f"Supabase 클라이언트 생성 실패: {e}")
-        return None
-
-
-def get_supabase_admin_client() -> Client | None:
-    """
-    .env 환경 변수(SUPABASE_URL, SUPABASE_SERVICE_KEY)를 읽어
-    회원 생성 및 관리자 권한용 supabase-py 클라이언트를 초기화합니다.
-    """
-    supabase_url = os.getenv("SUPABASE_URL")
-    service_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
-
-    if not supabase_url or not service_key:
-        return None
-
-    try:
-        return create_client(supabase_url, service_key)
-    except Exception as e:
-        logger.error(f"Supabase Admin 클라이언트 생성 실패: {e}")
-        return None
 
 
 def _process_product_item(item: dict) -> dict:
@@ -198,8 +159,6 @@ def chat_api():
     실시간 고객 문의 챗봇 API입니다.
     사용자의 질문 키워드를 분석하여 친절하고 정확한 자동 응답을 반환합니다.
     """
-    from flask import request, jsonify
-
     data = request.get_json() or {}
     message = (data.get("message") or "").strip()
 
