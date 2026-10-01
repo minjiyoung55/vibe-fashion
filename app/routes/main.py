@@ -739,4 +739,115 @@ def cart_add():
         return jsonify({"success": False, "message": f"장바구니 담기 중 오류가 발생했습니다: {str(e)}"}), 500
 
 
+# ==============================================================
+# 장바구니 수량 변경 API (PATCH /cart/<cart_id>)
+# ==============================================================
+@bp.route("/cart/<int:cart_id>", methods=["PATCH"])
+def cart_update_quantity(cart_id: int):
+    """
+    장바구니 수량 변경:
+    - 요청 body: quantity (변경할 새 수량)
+    - 본인 소유의 장바구니 아이템인지 확인 (다른 사용자 cart_id 접근 차단)
+    - quantity가 1 미만이면 에러
+    - 변경하려는 quantity가 해당 옵션의 stock을 초과하면 "재고가 부족합니다(현재 N개)" 에러
+    - 성공 시 UPDATE 후 새 소계(subtotal) 반환
+    """
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({
+            "success": False,
+            "message": "로그인이 필요한 서비스입니다.",
+            "redirect": url_for("auth.login")
+        }), 401
+
+    data = request.get_json() or {}
+    try:
+        new_quantity = int(data.get("quantity"))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "올바른 수량을 입력해 주세요."}), 400
+
+    # 1. quantity가 1 미만인 경우 에러
+    if new_quantity < 1:
+        return jsonify({"success": False, "message": "수량은 최소 1개 이상이어야 합니다."}), 400
+
+    admin_sb = get_supabase_admin_client()
+    if not admin_sb:
+        return jsonify({"success": False, "message": "서버 연결에 실패했습니다."}), 500
+
+    try:
+        # 2. 장바구니 아이템 조회 (옵션 및 상품 가격 정보 조인)
+        cart_res = (
+            admin_sb.table("carts")
+            .select("id, user_id, product_id, option_id, quantity, product_options(id, stock, additional_price), products(id, price, discount_rate)")
+            .eq("id", cart_id)
+            .maybe_single()
+            .execute()
+        )
+        cart_item = cart_res.data if cart_res else None
+
+        if not cart_item:
+            return jsonify({"success": False, "message": "장바구니 항목을 찾을 수 없습니다."}), 404
+
+        # 3. 본인 소유 확인 (다른 사용자의 cart_id 접근 차단)
+        if cart_item.get("user_id") != user_id:
+            return jsonify({"success": False, "message": "접근 권한이 없습니다."}), 403
+
+        # 옵션 및 재고 정보 확인
+        option_data = cart_item.get("product_options") or {}
+        current_stock = int(option_data.get("stock") or 0)
+
+        # 4. 재고 초과 검증
+        if new_quantity > current_stock:
+            return jsonify({
+                "success": False,
+                "message": f"재고가 부족합니다(현재 {current_stock}개)"
+            }), 400
+
+        # 5. 수량 UPDATE
+        update_res = (
+            admin_sb.table("carts")
+            .update({"quantity": new_quantity})
+            .eq("id", cart_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        if not update_res.data:
+            return jsonify({"success": False, "message": "수량 변경에 실패했습니다."}), 500
+
+        # 6. 새 소계(subtotal) 계산
+        product_data = cart_item.get("products") or {}
+        raw_price = float(product_data.get("price") or 0)
+        discount_rate = float(product_data.get("discount_rate") or 0)
+        additional_price = float(option_data.get("additional_price") or 0)
+
+        # 실제 단가 계산 (할인 적용가 + 추가 옵션가)
+        if discount_rate > 0:
+            unit_price = round(raw_price * (1 - discount_rate / 100)) + additional_price
+        else:
+            unit_price = raw_price + additional_price
+
+        subtotal = int(unit_price * new_quantity)
+
+        # 전체 장바구니 수량 합계 조회
+        total_items_res = admin_sb.table("carts").select("quantity").eq("user_id", user_id).execute()
+        cart_total_count = sum(int(item.get("quantity") or 0) for item in (total_items_res.data or []))
+
+        return jsonify({
+            "success": True,
+            "message": "수량이 변경되었습니다.",
+            "cart_id": cart_id,
+            "quantity": new_quantity,
+            "unit_price": int(unit_price),
+            "subtotal": subtotal,
+            "formatted_subtotal": f"{subtotal:,}원",
+            "cart_count": cart_total_count
+        })
+
+    except Exception as e:
+        logger.error(f"장바구니 수량 변경 실패: {e}")
+        return jsonify({"success": False, "message": f"수량 변경 중 오류가 발생했습니다: {str(e)}"}), 500
+
+
+
 
