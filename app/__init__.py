@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, request
 from dotenv import load_dotenv
 
 # .env 파일의 환경 변수를 미리 로드합니다.
@@ -22,6 +22,7 @@ def create_app(test_config=None):
         SECRET_KEY=os.getenv("SECRET_KEY", "dev-secret-key-default"),
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
     )
 
     # 테스트 설정이 주어졌다면 덮어쓰기
@@ -77,5 +78,21 @@ def create_app(test_config=None):
             "user_cart_count": cart_count,
             "is_admin": is_admin
         }
+
+    # 보안 응답 헤더 추가 (XSS, 클릭재킹, MIME 위조 방지 등)
+    @app.after_request
+    def set_security_headers(response):
+        # 1. 클릭재킹 방어: 다른 사이트의 iframe 내부 임베드 차단
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        # 2. MIME 스니핑 방어: 선언된 Content-Type 준수 강제
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        # 3. 브라우저 내장 XSS 필터 활성화
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        # 4. 리퍼러 정책: 동일 출처 또는 HTTPS 이동 시에만 상세 리퍼러 전송
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # 5. HTTPS 환경(Azure 등)에서 HSTS 강제 (1년 유효)
+        if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
     return app

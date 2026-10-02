@@ -1089,13 +1089,28 @@ def delete_cart_item(cart_id: int):
 
 
 # ==============================================================
-# 환경 변수 디버그 엔드포인트 (DEBUG ONLY - 배포 후 제거)
+# 환경 변수 디버그 엔드포인트 (관리자 전용 보안 접근 제한)
 # ==============================================================
 @bp.route("/_debug/env")
 def debug_env():
     """
-    환경 변수가 제대로 로드되었는지 확인하는 테스트 엔드포인트
+    환경 변수가 제대로 로드되었는지 확인하는 테스트 엔드포인트 (관리자만 접근 가능)
     """
+    user_id = session.get("user_id")
+    is_admin = session.get("user_role") == "ADMIN"
+    if not is_admin and user_id:
+        admin_sb = get_supabase_admin_client()
+        if admin_sb:
+            try:
+                res = admin_sb.table("profiles").select("role").eq("id", user_id).maybe_single().execute()
+                if res and res.data and res.data.get("role") == "ADMIN":
+                    is_admin = True
+            except Exception:
+                pass
+
+    if not is_admin:
+        return jsonify({"error": "접근 권한이 없습니다."}), 403
+
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
     supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
@@ -1111,13 +1126,28 @@ def debug_env():
 
 
 # ==============================================================
-# Supabase 연결 테스트 엔드포인트 (DEBUG ONLY)
+# Supabase 연결 테스트 엔드포인트 (관리자 전용 보안 접근 제한)
 # ==============================================================
 @bp.route("/_debug/supabase")
 def debug_supabase():
     """
-    Supabase 클라이언트가 실제로 작동하는지 테스트
+    Supabase 클라이언트가 실제로 작동하는지 테스트 (관리자만 접근 가능)
     """
+    user_id = session.get("user_id")
+    is_admin = session.get("user_role") == "ADMIN"
+    if not is_admin and user_id:
+        admin_sb = get_supabase_admin_client()
+        if admin_sb:
+            try:
+                res = admin_sb.table("profiles").select("role").eq("id", user_id).maybe_single().execute()
+                if res and res.data and res.data.get("role") == "ADMIN":
+                    is_admin = True
+            except Exception:
+                pass
+
+    if not is_admin:
+        return jsonify({"error": "접근 권한이 없습니다."}), 403
+
     try:
         # Admin 클라이언트로 products 테이블 조회 시도
         admin_sb = get_supabase_admin_client()
