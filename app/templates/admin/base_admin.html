@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VIBE FASHION 관리자 대시보드{% endblock %}</title>
+
+    <!-- Bootstrap 5.3 CDN CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --admin-sidebar-width: 250px;
+            --admin-bg: #f8fafc;
+            --admin-border: #e2e8f0;
+            --admin-primary: #1e293b;
+            --admin-accent: #3b82f6;
+        }
+
+        body {
+            background-color: var(--admin-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #334155;
+            overflow-x: hidden;
+        }
+
+        /* 좌측 고정형 사이드바 */
+        #adminSidebar {
+            width: var(--admin-sidebar-width);
+            min-height: 100vh;
+            background-color: #ffffff;
+            border-right: 1px solid var(--admin-border);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 1000;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+
+        /* 우측 메인 콘텐츠 영역 */
+        #adminMainWrapper {
+            margin-left: var(--admin-sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        /* 상단 네비게이션 헤더 */
+        #adminTopNav {
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--admin-border);
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        /* 사이드바 메뉴 링크 */
+        .sidebar-brand {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            border-bottom: 1px solid var(--admin-border);
+            font-weight: 800;
+            font-size: 1.15rem;
+            color: #0f172a;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar-menu-category {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            padding: 1.25rem 1.5rem 0.5rem;
+        }
+
+        .nav-link-admin {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: #475569;
+            font-size: 0.92rem;
+            font-weight: 500;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .nav-link-admin i {
+            font-size: 1.15rem;
+            margin-right: 0.85rem;
+            color: #64748b;
+            transition: color 0.15s ease-in-out;
+        }
+
+        .nav-link-admin:hover {
+            color: var(--admin-accent);
+            background-color: #f1f5f9;
+        }
+
+        .nav-link-admin:hover i {
+            color: var(--admin-accent);
+        }
+
+        .nav-link-admin.active {
+            color: var(--admin-accent);
+            background-color: #eff6ff;
+            border-left-color: var(--admin-accent);
+            font-weight: 600;
+        }
+
+        .nav-link-admin.active i {
+            color: var(--admin-accent);
+        }
+
+        /* 뱃지 및 카드 커스텀 */
+        .badge-live {
+            background-color: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-test {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .admin-card {
+            background: #ffffff;
+            border: 1px solid var(--admin-border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        /* 모바일 대응 토글 */
+        @media (max-width: 991.98px) {
+            #adminSidebar {
+                margin-left: calc(-1 * var(--admin-sidebar-width));
+            }
+            #adminSidebar.show {
+                margin-left: 0;
+            }
+            #adminMainWrapper {
+                margin-left: 0;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- ========================================== -->
+    <!-- 1. 좌측 고정형 사이드바 (11개 메뉴) -->
+    <!-- ========================================== -->
+    <aside id="adminSidebar">
+        <!-- 관리자 브랜드 로고 -->
+        <a href="{{ url_for('admin.dashboard') }}" class="sidebar-brand">
+            <span class="badge bg-primary text-white p-2 rounded-2 me-2">
+                <i class="bi bi-shield-lock-fill"></i>
+            </span>
+            <span>VIBE ADMIN</span>
+            <span class="badge bg-light text-secondary border ms-auto small py-1 px-2" style="font-size: 0.65rem;">v1.0</span>
+        </a>
+
+        <div class="py-2">
+            <!-- 1. 메인 현황 -->
+            <div class="sidebar-menu-category">MAIN DASHBOARD</div>
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-link-admin {% if active_menu == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-grid-1x2-fill"></i> 1. 대시보드
+            </a>
+
+            <!-- 2. 주문 및 배송 -->
+            <div class="sidebar-menu-category">ORDER & SHIPPING</div>
+            <a href="{{ url_for('admin.orders') }}" class="nav-link-admin {% if active_menu == 'orders' %}active{% endif %}">
+                <i class="bi bi-receipt"></i> 2. 주문 관리
+            </a>
+            <a href="{{ url_for('admin.deliveries') }}" class="nav-link-admin {% if active_menu == 'deliveries' %}active{% endif %}">
+                <i class="bi bi-truck"></i> 3. 배송 관리
+            </a>
+
+            <!-- 3. 상품 및 재고 -->
+            <div class="sidebar-menu-category">PRODUCT & INVENTORY</div>
+            <a href="{{ url_for('admin.products') }}" class="nav-link-admin {% if active_menu == 'products' %}active{% endif %}">
+                <i class="bi bi-box-seam"></i> 4. 상품 관리
+            </a>
+            <a href="{{ url_for('admin.inventory') }}" class="nav-link-admin {% if active_menu == 'inventory' %}active{% endif %}">
+                <i class="bi bi-boxes"></i> 5. 재고 관리
+            </a>
+
+            <!-- 4. 회원 관리 -->
+            <div class="sidebar-menu-category">MEMBERS</div>
+            <a href="{{ url_for('admin.users') }}" class="nav-link-admin {% if active_menu == 'users' %}active{% endif %}">
+                <i class="bi bi-people-fill"></i> 6. 회원 관리
+            </a>
+
+            <!-- 5. 정산 및 통계 -->
+            <div class="sidebar-menu-category">FINANCE & ANALYTICS</div>
+            <a href="{{ url_for('admin.sales') }}" class="nav-link-admin {% if active_menu == 'sales' %}active{% endif %}">
+                <i class="bi bi-cash-coin"></i> 7. 매출 및 정산
+            </a>
+            <a href="{{ url_for('admin.analytics') }}" class="nav-link-admin {% if active_menu == 'analytics' %}active{% endif %}">
+                <i class="bi bi-graph-up-arrow"></i> 8. 판매 분석
+            </a>
+
+            <!-- 6. 마케팅 및 CS -->
+            <div class="sidebar-menu-category">MARKETING & SUPPORT</div>
+            <a href="{{ url_for('admin.coupons') }}" class="nav-link-admin {% if active_menu == 'coupons' %}active{% endif %}">
+                <i class="bi bi-ticket-perforated"></i> 9. 쿠폰 및 적립금
+            </a>
+            <a href="{{ url_for('admin.cs') }}" class="nav-link-admin {% if active_menu == 'cs' %}active{% endif %}">
+                <i class="bi bi-chat-dots-fill"></i> 10. 고객 문의 및 CS
+            </a>
+
+            <!-- 7. 설정 -->
+            <div class="sidebar-menu-category">SYSTEM</div>
+            <a href="{{ url_for('admin.settings') }}" class="nav-link-admin {% if active_menu == 'settings' %}active{% endif %}">
+                <i class="bi bi-gear-fill"></i> 11. 관리자 설정
+            </a>
+        </div>
+    </aside>
+
+    <!-- ========================================== -->
+    <!-- 2. 우측 메인 래퍼 -->
+    <!-- ========================================== -->
+    <div id="adminMainWrapper">
+        <!-- 상단 헤더 네비게이션 -->
+        <header id="adminTopNav" class="d-flex align-items-center justify-content-between px-3 px-lg-4">
+            <!-- 모바일 토글 버튼 & 페이지 타이틀 -->
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary btn-sm d-lg-none me-2" id="sidebarToggleBtn" type="button">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <h5 class="mb-0 fw-bold text-dark d-flex align-items-center">
+                    {% block page_title %}관리자 대시보드{% endblock %}
+                </h5>
+            </div>
+
+            <!-- 우측 검색, 알림 및 프로필 드롭다운 -->
+            <div class="d-flex align-items-center gap-3">
+                <!-- 쇼핑몰 바로가기 -->
+                <a href="{{ url_for('main.index') }}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-pill d-none d-sm-inline-flex align-items-center">
+                    <i class="bi bi-shop me-1 text-primary"></i>쇼핑몰 바로가기
+                </a>
+
+                <!-- 알림 아이콘 -->
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm rounded-circle position-relative p-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell fs-6"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+                            <span class="visually-hidden">새 알림</span>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 p-2" style="width: 280px;">
+                        <li class="dropdown-header fw-bold text-dark">신규 알림</li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item small text-wrap py-2" href="{{ url_for('admin.orders') }}"><i class="bi bi-bag-check text-success me-1"></i> 새 주문 건이 접수되었습니다.</a></li>
+                        <li><a class="dropdown-item small text-wrap py-2" href="{{ url_for('admin.inventory') }}"><i class="bi bi-exclamation-triangle text-warning me-1"></i> 품절 임박 상품이 1건 있습니다.</a></li>
+                    </ul>
+                </div>
+
+                <!-- 관리자 프로필 -->
+                <div class="dropdown">
+                    <button class="btn btn-light btn-sm rounded-pill d-flex align-items-center py-1 px-2.5 border" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px; font-size: 0.8rem;">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <span class="small fw-bold text-dark me-1">{{ session.get('user_name', '관리자') }}</span>
+                        <i class="bi bi-chevron-down small text-muted"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
+                        <li class="px-3 py-2 border-bottom">
+                            <div class="small fw-bold text-dark">{{ session.get('user_name', '관리자') }}</div>
+                            <div class="small text-muted text-truncate" style="max-width: 180px;">{{ session.get('user_email', 'admin@vibefashion.com') }}</div>
+                            <span class="badge bg-danger mt-1">MASTER ADMIN</span>
+                        </li>
+                        <li><a class="dropdown-item small py-2" href="{{ url_for('admin.settings') }}"><i class="bi bi-gear me-2"></i>관리자 설정</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item small text-danger py-2" href="{{ url_for('admin.admin_logout') }}"><i class="bi bi-box-arrow-right me-2"></i>로그아웃</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- 플래시 알림 메시지 영역 -->
+        <div class="px-3 px-lg-4 pt-3">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show rounded-3 shadow-xs mb-3" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- 본문 콘텐츠 영역 -->
+        <main class="flex-grow-1 p-3 p-lg-4">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- 관리자 푸터 -->
+        <footer class="bg-white border-top py-3 px-4 text-center text-muted small">
+            &copy; 2026 VIBE FASHION. All Rights Reserved. Administrator Workspace
+        </footer>
+    </div>
+
+    <!-- Bootstrap 5.3 CDN JS (번들) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        // 모바일 사이드바 토글
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const adminSidebar = document.getElementById('adminSidebar');
+        if (sidebarToggleBtn && adminSidebar) {
+            sidebarToggleBtn.addEventListener('click', () => {
+                adminSidebar.classList.toggle('show');
+            });
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

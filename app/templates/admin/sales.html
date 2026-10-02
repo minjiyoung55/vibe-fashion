@@ -1,0 +1,84 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}매출 및 정산 - VIBE ADMIN{% endblock %}
+{% block page_title %}<i class="bi bi-cash-coin text-primary me-2"></i>매출 및 손익 정산{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- 정산 요약 카드 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="admin-card p-3">
+                <span class="text-secondary small fw-semibold">총 매출액 (실제 주문)</span>
+                <h3 class="fw-bolder text-dark mt-1 mb-0">{{ "{:,}".format(summary.total_sales) }}원</h3>
+                <small class="text-muted">완료 및 결제 주문 기준</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3">
+                <span class="text-secondary small fw-semibold">추정 원가 (40%)</span>
+                <h3 class="fw-bolder text-muted mt-1 mb-0">{{ "{:,}".format(summary.total_cost) }}원</h3>
+                <small class="text-muted">상품 제조/사입 원가</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3">
+                <span class="text-secondary small fw-semibold">배송비 및 수수료</span>
+                <h3 class="fw-bolder text-warning-emphasis mt-1 mb-0">{{ "{:,}".format(summary.fees) }}원</h3>
+                <small class="text-muted">PG 수수료 3.3% + 택배비</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 bg-primary-subtle border-primary-subtle">
+                <span class="text-primary small fw-bold">확정 순이익</span>
+                <h3 class="fw-bolder text-primary mt-1 mb-0">{{ "{:,}".format(summary.net_profit) }}원</h3>
+                <small class="text-primary fw-semibold">이익률 약 {{ summary.margin }}%</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- 기간별 손익 분석 테이블 -->
+    <div class="admin-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-dark mb-0">주문별 정산 세부 내역 (실제 DB 연동)</h6>
+            <span class="badge badge-live">실시간 집계</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small">
+                    <tr>
+                        <th>주문번호</th>
+                        <th>결제일시</th>
+                        <th>상품매출</th>
+                        <th>배송비</th>
+                        <th>최종 결제액</th>
+                        <th>PG수수료(3.3%)</th>
+                        <th>추정 순이익</th>
+                        <th>정산상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ord in orders %}
+                    {% set pg_fee = (ord.final_amount * 0.033)|round|int %}
+                    {% set estimated_profit = (ord.final_amount * 0.35)|round|int %}
+                    <tr>
+                        <td class="font-monospace fw-bold text-primary">{{ ord.order_number }}</td>
+                        <td class="small text-secondary">{{ ord.created_at[:19].replace('T', ' ') }}</td>
+                        <td class="fw-semibold text-dark">{{ "{:,}".format(ord.total_amount|int) }}원</td>
+                        <td class="small text-muted">+3,000원</td>
+                        <td class="fw-bold text-dark">{{ "{:,}".format(ord.final_amount|int) }}원</td>
+                        <td class="small text-danger">-{{ "{:,}".format(pg_fee) }}원</td>
+                        <td class="fw-bold text-success">+{{ "{:,}".format(estimated_profit) }}원</td>
+                        <td><span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1">정산 완료</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">정산 내역이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

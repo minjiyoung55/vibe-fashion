@@ -1,0 +1,140 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}주문 관리 - VIBE ADMIN{% endblock %}
+{% block page_title %}<i class="bi bi-receipt text-primary me-2"></i>주문 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- 검색 및 필터 바 -->
+    <div class="admin-card p-3 mb-4">
+        <form method="GET" action="{{ url_for('admin.orders') }}" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <input type="text" name="keyword" class="form-control form-control-sm" placeholder="주문번호, 주문자, 전화번호 검색" value="{{ request.args.get('keyword', '') }}">
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="" {% if not request.args.get('status') %}selected{% endif %}>전체 주문상태</option>
+                    <option value="PAID" {% if request.args.get('status') == 'PAID' %}selected{% endif %}>결제완료</option>
+                    <option value="PREPARING" {% if request.args.get('status') == 'PREPARING' %}selected{% endif %}>배송준비</option>
+                    <option value="SHIPPED" {% if request.args.get('status') == 'SHIPPED' %}selected{% endif %}>배송중</option>
+                    <option value="DELIVERED" {% if request.args.get('status') == 'DELIVERED' %}selected{% endif %}>배송완료</option>
+                    <option value="CANCELLED" {% if request.args.get('status') == 'CANCELLED' %}selected{% endif %}>주문취소</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">
+                    <i class="bi bi-search me-1"></i>검색
+                </button>
+                <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-2">초기화</a>
+            </div>
+            <div class="col-md-5 text-end">
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="exportOrdersToCSV()">
+                    <i class="bi bi-file-earmark-excel me-1"></i>엑셀 다운로드 (CSV)
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 주문 목록 테이블 -->
+    <div class="admin-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-dark mb-0">
+                주문 목록 (총 {{ orders|length }}건)
+            </h6>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="ordersTable">
+                <thead class="table-light text-secondary small">
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" id="checkAll"></th>
+                        <th>주문번호</th>
+                        <th>주문일시</th>
+                        <th>주문자</th>
+                        <th>주문 품목</th>
+                        <th>결제금액</th>
+                        <th>상태</th>
+                        <th>송장번호</th>
+                        <th class="text-center">상태 변경</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ord in orders %}
+                    <tr>
+                        <td><input type="checkbox" class="order-chk" value="{{ ord.id }}"></td>
+                        <td>
+                            <strong class="font-monospace text-primary">{{ ord.order_number }}</strong>
+                        </td>
+                        <td class="small text-secondary">{{ ord.created_at[:19].replace('T', ' ') }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ ord.recipient_name }}</div>
+                            <small class="text-muted">{{ ord.recipient_phone }}</small>
+                        </td>
+                        <td>
+                            <div class="small fw-semibold text-dark">{{ ord.summary_item_name }}</div>
+                            <small class="text-muted">{{ ord.shipping_address }}</small>
+                        </td>
+                        <td class="fw-bold text-dark">{{ "{:,}".format(ord.final_amount|int) }}원</td>
+                        <td>
+                            <span class="badge {% if ord.status == 'PAID' %}bg-primary{% elif ord.status == 'DELIVERED' %}bg-success{% elif ord.status == 'SHIPPED' %}bg-info text-dark{% else %}bg-secondary{% endif %} rounded-pill px-2.5 py-1">
+                                {{ ord.status_label }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="small font-monospace text-muted">{{ ord.shipping_memo or '미등록' }}</span>
+                        </td>
+                        <td class="text-center">
+                            <form action="{{ url_for('admin.update_order_status', order_id=ord.id) }}" method="POST" class="d-inline-flex gap-1">
+                                <select name="status" class="form-select form-select-sm" style="width: 105px;">
+                                    <option value="PAID" {% if ord.status == 'PAID' %}selected{% endif %}>결제완료</option>
+                                    <option value="PREPARING" {% if ord.status == 'PREPARING' %}selected{% endif %}>배송준비</option>
+                                    <option value="SHIPPED" {% if ord.status == 'SHIPPED' %}selected{% endif %}>배송중</option>
+                                    <option value="DELIVERED" {% if ord.status == 'DELIVERED' %}selected{% endif %}>배송완료</option>
+                                    <option value="CANCELLED" {% if ord.status == 'CANCELLED' %}selected{% endif %}>주문취소</option>
+                                </select>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">변경</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">조건에 맞는 주문 건이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 전체 선택 체크박스
+    const checkAll = document.getElementById("checkAll");
+    if (checkAll) {
+        checkAll.addEventListener("change", (e) => {
+            document.querySelectorAll(".order-chk").forEach(chk => chk.checked = e.target.checked);
+        });
+    }
+
+    // 주문 내역 CSV 다운로드
+    function exportOrdersToCSV() {
+        const table = document.getElementById("ordersTable");
+        let csv = [];
+        for (let row of table.rows) {
+            let rowData = [];
+            for (let cell of row.cells) {
+                let text = cell.innerText.replace(/(\r\n|\n|\r)/gm, " ").trim();
+                rowData.push('"' + text.replace(/"/g, '""') + '"');
+            }
+            csv.push(rowData.join(","));
+        }
+        const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `orders_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+    }
+</script>
+{% endblock %}

@@ -35,10 +35,11 @@ def create_app(test_config=None):
         pass
 
     # Blueprint(경로/라우트 분리) 등록
-    from app.routes import main, auth
+    from app.routes import main, auth, admin
 
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
+    app.register_blueprint(admin.admin_bp)
 
     # 최상위 /mypage 및 /mypage/change-password 직접 접근 지원
     app.add_url_rule("/mypage", endpoint="mypage_root", view_func=auth.mypage, methods=["GET", "POST"])

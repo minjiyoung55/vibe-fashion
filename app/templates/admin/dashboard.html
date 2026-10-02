@@ -1,0 +1,367 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}통합 대시보드 - VIBE ADMIN{% endblock %}
+{% block page_title %}<i class="bi bi-grid-1x2-fill text-primary me-2"></i>통합 대시보드{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- 상단 실시간 현황 배너 -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-1.5 rounded-pill fw-semibold">
+                <i class="bi bi-clock-history me-1"></i>실시간 운영 대시보드
+            </span>
+            <span class="text-muted small ms-2">전체 매장 운영 데이터를 집계하여 표시합니다.</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-xs bg-white" onclick="location.reload();">
+                <i class="bi bi-arrow-clockwise me-1"></i>새로고침
+            </button>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-xs">
+                <i class="bi bi-receipt me-1"></i>주문 바로가기
+            </a>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. 핵심 지표 카드 7종 (KPI Cards) -->
+    <!-- ========================================== -->
+    <div class="row g-3 mb-4">
+        <!-- 오늘 매출 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">오늘 매출</span>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">
+                        <i class="bi bi-arrow-up-right me-1"></i>+12.4%
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-dark mb-1">{{ "{:,}".format(stats.today_sales) }}원</h4>
+                <div class="small text-muted">전일 동시간 대비 증가</div>
+            </div>
+        </div>
+
+        <!-- 이번 주 매출 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">이번 주 매출</span>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">
+                        <i class="bi bi-arrow-up-right me-1"></i>+8.1%
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-dark mb-1">{{ "{:,}".format(stats.week_sales) }}원</h4>
+                <div class="small text-muted">전주 대비 성장세 유지</div>
+            </div>
+        </div>
+
+        <!-- 이번 달 매출 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">이번 달 매출</span>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 small">
+                        <i class="bi bi-graph-up me-1"></i>당월 누적
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-dark mb-1">{{ "{:,}".format(stats.month_sales) }}원</h4>
+                <div class="small text-muted">목표 달성률 85.4%</div>
+            </div>
+        </div>
+
+        <!-- 전체 주문 건수 -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">전체 주문 건수</span>
+                    <span class="badge bg-info-subtle text-info rounded-pill px-2 py-1 small">
+                        <i class="bi bi-bag-check me-1"></i>실시간
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-dark mb-1">{{ stats.total_orders }}건</h4>
+                <div class="small text-muted">주문 완료 및 결제 건</div>
+            </div>
+        </div>
+
+        <!-- 신규 회원 수 -->
+        <div class="col-sm-6 col-xl-4">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">전체 회원 수</span>
+                    <span class="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1 small">
+                        <i class="bi bi-people me-1"></i>누적
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-dark mb-1">{{ stats.total_users }}명</h4>
+                <div class="small text-muted">이번 주 신규 +3명 가입</div>
+            </div>
+        </div>
+
+        <!-- 순이익 -->
+        <div class="col-sm-6 col-xl-4">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">추정 순이익</span>
+                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">
+                        <i class="bi bi-cash me-1"></i>정산 기준
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-success mb-1">{{ "{:,}".format(stats.net_profit) }}원</h4>
+                <div class="small text-muted">원가 및 배송비 제외 마진</div>
+            </div>
+        </div>
+
+        <!-- 이익률 -->
+        <div class="col-sm-6 col-xl-4">
+            <div class="admin-card p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-secondary small fw-semibold">평균 이익률</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-1 small">
+                        <i class="bi bi-percent me-1"></i>안정권
+                    </span>
+                </div>
+                <h4 class="fw-bolder text-dark mb-1">{{ stats.profit_margin }}%</h4>
+                <div class="small text-muted">패션 카테고리 권장 수준</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. 실시간 업무 현황 위젯 (Action Needed) -->
+    <!-- ========================================== -->
+    <div class="admin-card p-4 mb-4">
+        <h6 class="fw-bold text-dark mb-3 d-flex align-items-center">
+            <i class="bi bi-lightning-charge-fill text-warning me-2"></i>실시간 업무 처리 현황
+            <span class="text-muted fw-normal small ms-2">(각 항목 클릭 시 해당 관리 페이지로 이동합니다)</span>
+        </h6>
+        <div class="row g-3 text-center">
+            <div class="col-6 col-md-4 col-xl-2">
+                <a href="{{ url_for('admin.orders') }}" class="text-decoration-none">
+                    <div class="p-3 bg-light rounded-3 border hover-shadow transition">
+                        <div class="text-secondary small mb-1">결제 완료</div>
+                        <h4 class="fw-bold text-primary mb-0">{{ stats.status_counts.paid }}</h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <a href="{{ url_for('admin.deliveries') }}" class="text-decoration-none">
+                    <div class="p-3 bg-light rounded-3 border hover-shadow transition">
+                        <div class="text-secondary small mb-1">배송 준비</div>
+                        <h4 class="fw-bold text-dark mb-0">{{ stats.status_counts.preparing }}</h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <a href="{{ url_for('admin.deliveries') }}" class="text-decoration-none">
+                    <div class="p-3 bg-light rounded-3 border hover-shadow transition">
+                        <div class="text-secondary small mb-1">배송 중</div>
+                        <h4 class="fw-bold text-info mb-0">{{ stats.status_counts.shipping }}</h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <a href="{{ url_for('admin.deliveries') }}" class="text-decoration-none">
+                    <div class="p-3 bg-light rounded-3 border hover-shadow transition">
+                        <div class="text-secondary small mb-1">배송 완료</div>
+                        <h4 class="fw-bold text-success mb-0">{{ stats.status_counts.delivered }}</h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <a href="{{ url_for('admin.cs') }}" class="text-decoration-none">
+                    <div class="p-3 bg-light rounded-3 border hover-shadow transition">
+                        <div class="text-secondary small mb-1">취소/환불 요청</div>
+                        <h4 class="fw-bold text-danger mb-0">{{ stats.status_counts.refunds }}</h4>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <a href="{{ url_for('admin.inventory') }}" class="text-decoration-none">
+                    <div class="p-3 bg-light rounded-3 border hover-shadow transition">
+                        <div class="text-secondary small mb-1">재고 부족 상품</div>
+                        <h4 class="fw-bold text-warning-emphasis mb-0">{{ stats.status_counts.low_stock }}</h4>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. 그래프 및 분석 (Charts) -->
+    <!-- ========================================== -->
+    <div class="row g-4 mb-4">
+        <!-- 매출 및 주문 건수 추이 (라인 & 바) -->
+        <div class="col-lg-8">
+            <div class="admin-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-graph-up text-primary me-2"></i>매출 및 주문 건수 추이
+                    </h6>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary active">일별</button>
+                        <button type="button" class="btn btn-outline-secondary">주별</button>
+                        <button type="button" class="btn btn-outline-secondary">월별</button>
+                    </div>
+                </div>
+                <div style="height: 280px;">
+                    <canvas id="salesTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상품 카테고리별 매출 비중 (도넛 차트) -->
+        <div class="col-lg-4">
+            <div class="admin-card p-4 h-100">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-pie-chart text-success me-2"></i>카테고리별 매출 비중
+                </h6>
+                <div style="height: 220px;" class="d-flex justify-content-center align-items-center">
+                    <canvas id="categoryShareChart"></canvas>
+                </div>
+                <div class="mt-3 text-center small text-muted">
+                    원피스 (45%) · 아우터 (30%) · 액세서리 (25%)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 4. 최근 접수된 주문 목록 (Live Data) -->
+    <!-- ========================================== -->
+    <div class="admin-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-dark mb-0">
+                <i class="bi bi-clock-history text-secondary me-2"></i>최근 주문 내역 (실시간)
+            </h6>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                전체보기 <i class="bi bi-chevron-right small"></i>
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small">
+                    <tr>
+                        <th class="ps-3 py-2.5">주문번호</th>
+                        <th class="py-2.5">주문일시</th>
+                        <th class="py-2.5">주문자</th>
+                        <th class="py-2.5">배송지</th>
+                        <th class="py-2.5 text-end">결제금액</th>
+                        <th class="py-2.5 text-center">주문상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ord in stats.recent_orders %}
+                    <tr>
+                        <td class="ps-3 py-3">
+                            <span class="fw-bold font-monospace text-primary">{{ ord.order_number }}</span>
+                        </td>
+                        <td class="small text-secondary">{{ ord.created_at[:19].replace('T', ' ') }}</td>
+                        <td class="fw-semibold text-dark">{{ ord.recipient_name }}</td>
+                        <td class="small text-secondary text-truncate" style="max-width: 220px;">{{ ord.shipping_address }}</td>
+                        <td class="text-end fw-bold text-dark">{{ "{:,}".format(ord.final_amount|int) }}원</td>
+                        <td class="text-center">
+                            <span class="badge bg-success-subtle text-success px-2.5 py-1 rounded-pill">{{ ord.status }}</span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">최근 접수된 주문이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. 매출 추이 차트 (Line + Bar)
+    const ctxTrends = document.getElementById("salesTrendsChart").getContext("2d");
+    new Chart(ctxTrends, {
+        type: "line",
+        data: {
+            labels: {{ stats.chart_labels|tojson }},
+            datasets: [
+                {
+                    label: "매출액(원)",
+                    data: {{ stats.chart_sales|tojson }},
+                    borderColor: "#3b82f6",
+                    backgroundColor: "rgba(59, 130, 246, 0.08)",
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    yAxisID: "y"
+                },
+                {
+                    label: "주문건수",
+                    data: {{ stats.chart_orders|tojson }},
+                    borderColor: "#10b981",
+                    backgroundColor: "rgba(16, 185, 129, 0.8)",
+                    type: "bar",
+                    borderRadius: 4,
+                    barThickness: 16,
+                    yAxisID: "y1"
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            scales: {
+                y: {
+                    type: "linear",
+                    display: true,
+                    position: "left",
+                    ticks: {
+                        callback: (val) => val.toLocaleString() + "원"
+                    },
+                    grid: { color: "#f1f5f9" }
+                },
+                y1: {
+                    type: "linear",
+                    display: true,
+                    position: "right",
+                    grid: { drawOnChartArea: false },
+                    ticks: { stepSize: 1 }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    // 2. 카테고리별 비중 차트 (Doughnut)
+    const ctxCat = document.getElementById("categoryShareChart").getContext("2d");
+    new Chart(ctxCat, {
+        type: "doughnut",
+        data: {
+            labels: ["원피스", "아우터/탑", "패션소품"],
+            datasets: [{
+                data: [45, 30, 25],
+                backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: "bottom" }
+            },
+            cutout: "70%"
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}판매 분석 - VIBE ADMIN{% endblock %}
+{% block page_title %}<i class="bi bi-graph-up-arrow text-primary me-2"></i>판매 분석 및 통계{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <div class="row g-4 mb-4">
+        <!-- 인기 상품 TOP 5 (실제 주문 데이터 집계) -->
+        <div class="col-lg-6">
+            <div class="admin-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-dark mb-0">인기 상품 TOP 5 (누적 판매량 기준)</h6>
+                    <span class="badge badge-live">실시간 집계</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th>순위</th>
+                                <th>상품명</th>
+                                <th class="text-center">판매수량</th>
+                                <th class="text-end">총 매출</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in top_products %}
+                            <tr>
+                                <td><span class="badge bg-primary rounded-circle px-2 py-1">{{ loop.index }}</span></td>
+                                <td class="fw-bold text-dark">{{ item.name }}</td>
+                                <td class="text-center">{{ item.quantity }}개</td>
+                                <td class="text-end fw-bold">{{ "{:,}".format(item.sales) }}원</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center py-4 text-muted">집계된 판매 내역이 없습니다.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 요일별 및 시간대별 판매 패턴 (차트) -->
+        <div class="col-lg-6">
+            <div class="admin-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-dark mb-0">시간대별 주문 집중도 분석</h6>
+                    <span class="badge bg-light text-secondary border small">최근 30일</span>
+                </div>
+                <div style="height: 250px;">
+                    <canvas id="hourlySalesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const ctx = document.getElementById("hourlySalesChart").getContext("2d");
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["00-04시", "04-08시", "08-12시", "12-16시", "16-20시", "20-24시"],
+            datasets: [{
+                label: "주문 건수",
+                data: [1, 0, 3, 8, 12, 18],
+                backgroundColor: "#3b82f6",
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 5 } }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

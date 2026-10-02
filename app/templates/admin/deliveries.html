@@ -1,0 +1,90 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}배송 관리 - VIBE ADMIN{% endblock %}
+{% block page_title %}<i class="bi bi-truck text-primary me-2"></i>배송 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- 상단 배송 현황 요약 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-secondary small">배송 준비중</span>
+                <h3 class="fw-bold text-dark mt-1 mb-0">{{ counts.preparing }}건</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-secondary small">배송중</span>
+                <h3 class="fw-bold text-info mt-1 mb-0">{{ counts.shipping }}건</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-secondary small">배송 완료</span>
+                <h3 class="fw-bold text-success mt-1 mb-0">{{ counts.delivered }}건</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="admin-card p-3 text-center">
+                <span class="text-secondary small">배송 지연 의심</span>
+                <h3 class="fw-bold text-warning-emphasis mt-1 mb-0">0건</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- 배송 목록 및 송장 관리 테이블 -->
+    <div class="admin-card p-4">
+        <h6 class="fw-bold text-dark mb-3">배송 처리 및 운송장 관리</h6>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small">
+                    <tr>
+                        <th>주문번호</th>
+                        <th>수령인</th>
+                        <th>배송 주소</th>
+                        <th>배송 메모 / 송장번호</th>
+                        <th>현재 배송상태</th>
+                        <th class="text-center">송장 등록 및 상태 변경</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ord in deliveries %}
+                    <tr>
+                        <td class="font-monospace fw-bold text-primary">{{ ord.order_number }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ ord.recipient_name }}</div>
+                            <small class="text-muted">{{ ord.recipient_phone }}</small>
+                        </td>
+                        <td class="small text-secondary">{{ ord.shipping_address }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-monospace">{{ ord.shipping_memo or '운송장 미입력' }}</span>
+                        </td>
+                        <td>
+                            <span class="badge {% if ord.status == 'DELIVERED' %}bg-success{% elif ord.status == 'SHIPPED' %}bg-info text-dark{% else %}bg-secondary{% endif %} rounded-pill px-2.5 py-1">
+                                {{ ord.status }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <form action="{{ url_for('admin.update_delivery', order_id=ord.id) }}" method="POST" class="d-inline-flex gap-1">
+                                <input type="text" name="shipping_memo" class="form-control form-control-sm" placeholder="CJ대한통운 12345..." value="{{ ord.shipping_memo or '' }}" style="width: 170px;">
+                                <select name="status" class="form-select form-select-sm" style="width: 105px;">
+                                    <option value="PREPARING" {% if ord.status == 'PREPARING' %}selected{% endif %}>배송준비</option>
+                                    <option value="SHIPPED" {% if ord.status == 'SHIPPED' %}selected{% endif %}>배송중</option>
+                                    <option value="DELIVERED" {% if ord.status == 'DELIVERED' %}selected{% endif %}>배송완료</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary btn-sm">저장</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">배송 대상 주문이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

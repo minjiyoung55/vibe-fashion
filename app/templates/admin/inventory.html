@@ -1,0 +1,72 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}재고 관리 - VIBE ADMIN{% endblock %}
+{% block page_title %}<i class="bi bi-boxes text-primary me-2"></i>재고 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- 안내 배너 -->
+    <div class="alert alert-warning border-0 rounded-3 d-flex align-items-center mb-4 p-3 shadow-xs">
+        <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+        <div>
+            <div class="fw-bold">안전 재고 모니터링 시스템</div>
+            <div class="small text-muted">재고가 3개 이하인 옵션은 '품절 임박'으로 자동 분류되며 신속한 발주가 필요합니다.</div>
+        </div>
+    </div>
+
+    <!-- 재고 목록 테이블 -->
+    <div class="admin-card p-4">
+        <h6 class="fw-bold text-dark mb-3">옵션별 실시간 재고 현황 (총 {{ inventory|length }}건)</h6>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary small">
+                    <tr>
+                        <th>옵션 ID</th>
+                        <th>상품명</th>
+                        <th>색상 / 사이즈</th>
+                        <th>현재 재고</th>
+                        <th>상태</th>
+                        <th class="text-center">재고 수량 수정</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for opt in inventory %}
+                    <tr>
+                        <td class="font-monospace text-muted small">#{{ opt.id }}</td>
+                        <td class="fw-bold text-dark">{{ opt.product_name }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border me-1">{{ opt.color }}</span>
+                            <span class="badge bg-light text-dark border">{{ opt.size }}</span>
+                        </td>
+                        <td>
+                            <span class="fs-6 fw-bold {% if opt.stock == 0 %}text-danger{% elif opt.stock <= 3 %}text-warning-emphasis{% else %}text-success{% endif %}">
+                                {{ opt.stock }}개
+                            </span>
+                        </td>
+                        <td>
+                            {% if opt.stock == 0 %}
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-2.5 py-1">품절</span>
+                            {% elif opt.stock <= 3 %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2.5 py-1">품절 임박</span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1">여유</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <form action="{{ url_for('admin.update_inventory', option_id=opt.id) }}" method="POST" class="d-inline-flex gap-1 align-items-center">
+                                <input type="number" name="stock" class="form-control form-control-sm text-center" value="{{ opt.stock }}" min="0" style="width: 80px;" required>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">저장</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">등록된 옵션 재고가 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
