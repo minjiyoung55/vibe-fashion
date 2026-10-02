@@ -533,8 +533,65 @@
         }
 
         if (buyNowBtn) {
-            buyNowBtn.addEventListener("click", () => {
-                alert("주문 페이지로 이동합니다. (준비 중인 기능입니다)");
+            buyNowBtn.addEventListener("click", async () => {
+                if (!colorSelect.value) {
+                    showInlineAlert("먼저 색상을 선택해 주세요.");
+                    colorSelect.focus();
+                    return;
+                }
+
+                if (!sizeSelect.value) {
+                    showInlineAlert("사이즈를 선택해 주세요.");
+                    sizeSelect.focus();
+                    return;
+                }
+
+                const optionId = sizeSelect.value;
+                const quantity = parseInt(qtyInput.value, 10) || 1;
+
+                if (currentOptionStock !== null && currentOptionStock <= 0) {
+                    showInlineAlert("선택하신 옵션은 품절되어 구매할 수 없습니다.");
+                    return;
+                }
+
+                buyNowBtn.disabled = true;
+                buyNowBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>주문서 이동 중...';
+
+                try {
+                    // 장바구니에 담은 후 바로 주문서 페이지로 이동
+                    const response = await fetch("/cart/add", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            product_option_id: optionId,
+                            quantity: quantity
+                        })
+                    });
+
+                    // 401: 비로그인 시 로그인 페이지로 이동
+                    if (response.status === 401) {
+                        const errData = await response.json();
+                        alert("로그인이 필요한 서비스입니다. 로그인 페이지로 이동합니다.");
+                        window.location.href = (errData.redirect || "/auth/login") + "?next=" + encodeURIComponent(window.location.pathname);
+                        return;
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // 바로 주문서(/order/checkout) 페이지로 이동
+                        window.location.href = "/order/checkout";
+                    } else {
+                        showInlineAlert(data.message || "주문 처리 중 오류가 발생했습니다.");
+                        buyNowBtn.disabled = false;
+                        buyNowBtn.innerHTML = '바로 구매하기';
+                    }
+                } catch (err) {
+                    console.error("바로 구매 오류:", err);
+                    showInlineAlert("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
+                    buyNowBtn.disabled = false;
+                    buyNowBtn.innerHTML = '바로 구매하기';
+                }
             });
         }
 
