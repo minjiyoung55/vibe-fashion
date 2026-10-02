@@ -54,6 +54,11 @@ def login():
     if request.method == "GET":
         # 이미 로그인된 상태라면 마이페이지 또는 메인으로 이동
         if session.get("user_id"):
+            if (
+                session.get("user_role") == "ADMIN"
+                and (session.get("user_email") or "").lower() == "jinju6309@naver.com"
+            ):
+                return redirect(url_for("admin.dashboard"))
             return redirect(url_for("auth.mypage"))
         return render_template("auth/login.html")
 
@@ -87,6 +92,7 @@ def login():
         session["user_email"] = user.email or email
         session["user_name"] = full_name
         session["user_points"] = points
+        session["user_role"] = "CUSTOMER"
         if res.session and getattr(res.session, "access_token", None):
             session["access_token"] = res.session.access_token
 
@@ -99,6 +105,12 @@ def login():
                     session["user_role"] = p_res.data.get("role", "CUSTOMER")
             except Exception:
                 pass
+
+        if (
+            session.get("user_role") == "ADMIN"
+            and (session.get("user_email") or "").lower() == "jinju6309@naver.com"
+        ):
+            return redirect(url_for("admin.dashboard"))
 
         return redirect(url_for("auth.mypage", message="로그인되었습니다."))
 

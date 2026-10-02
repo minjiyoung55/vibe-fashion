@@ -54,11 +54,6 @@
                     {% if session.get('user_id') %}
                         <!-- 로그인 상태 UI (네모 테두리 스타일) -->
                         <div class="d-flex align-items-center gap-2">
-                            {% if is_admin or session.get('user_role') == 'ADMIN' %}
-                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-danger btn-sm rounded-1 px-3 fw-bold shadow-sm d-flex align-items-center" style="background-color: #dc2626 !important; border-color: #b91c1c !important; color: #ffffff !important;" title="관리자 대시보드">
-                                <i class="bi bi-shield-lock-fill me-1"></i> 관리자
-                            </a>
-                            {% endif %}
                             <a href="{{ url_for('auth.mypage') }}" class="badge bg-warning text-dark px-3 py-2 rounded-1 fw-bold shadow-sm d-flex align-items-center text-decoration-none">
                                 <i class="bi bi-coin text-dark me-1 fs-6"></i> 적립금 <span id="navUserPoints" class="ms-1">{{ "{:,}".format(session.get('user_points', 2000)) }}</span>원
                             </a>
