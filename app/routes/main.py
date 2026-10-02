@@ -620,6 +620,52 @@ def api_product_options_by_color(product_id: str):
 
 
 # ==============================================================
+# 색상별 사이즈 및 재고 조회 API (GET /api/products/<product_id>/sizes?color=...)
+# ==============================================================
+@bp.route("/api/products/<product_id>/sizes")
+def api_product_sizes_by_color(product_id: str):
+    """
+    선택된 색상(color)에 해당하는 사이즈(size) 및 재고(stock) 목록을 반환합니다.
+    응답: [{"id": "opt_id", "size": "S", "stock": 3}, {"id": "opt_id2", "size": "M", "stock": 0}, ...]
+    """
+    color = (request.args.get("color") or "").strip()
+    if not color:
+        return jsonify([])
+    
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return jsonify([]), 500
+        
+        res = (
+            supabase.table("product_options")
+            .select("id, size, stock")
+            .eq("product_id", product_id)
+            .eq("color", color)
+            .order("id")
+            .execute()
+        )
+        
+        options = res.data or []
+        
+        # 응답 형식 정리: [{"id": "opt_id", "size": "S", "stock": 3}, ...]
+        result = [
+            {
+                "id": item.get("id"),
+                "size": item.get("size"),
+                "stock": int(item.get("stock") or 0)
+            }
+            for item in options
+        ]
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"색상별 사이즈 조회 실패: {e}")
+        return jsonify([]), 500
+
+
+# ==============================================================
 # 장바구니 담기 API (POST /cart/add)
 # ==============================================================
 @bp.route("/cart/add", methods=["POST"])

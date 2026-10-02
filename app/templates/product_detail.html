@@ -347,28 +347,29 @@
                 }
 
                 try {
-                    const response = await fetch(`/api/products/${productId}/options?color=${encodeURIComponent(selectedColor)}`);
-                    const data = await response.json();
-                    const sizes = data.sizes || [];
+                    // 새로운 API 호출: /api/products/<product_id>/sizes?color=<색상>
+                    const response = await fetch(`/api/products/${productId}/sizes?color=${encodeURIComponent(selectedColor)}`);
+                    const sizes = await response.json(); // 직접 배열 반환
 
-                    if (sizes.length === 0) {
+                    if (!Array.isArray(sizes) || sizes.length === 0) {
                         sizeSelect.innerHTML = '<option value="">선택 가능한 사이즈가 없습니다</option>';
                         return;
                     }
 
-                    sizes.forEach((opt) => {
+                    sizes.forEach((option) => {
                         const optElem = document.createElement("option");
-                        optElem.value = opt.id;
-                        optElem.setAttribute("data-stock", opt.stock);
+                        optElem.value = option.id; // product_option ID
+                        optElem.setAttribute("data-stock", option.stock);
 
-                        if (opt.stock === 0) {
-                            optElem.textContent = `${opt.size} (품절)`;
-                            optElem.disabled = true; // 재고 0은 품절 표시 및 선택 불가
+                        if (option.stock === 0) {
+                            // 품절: 텍스트에 "(품절)" 표시 + disabled 처리
+                            optElem.textContent = `${option.size} (품절)`;
+                            optElem.disabled = true;
                             optElem.className = "text-muted bg-light";
-                        } else if (opt.stock === 1) {
-                            optElem.textContent = `${opt.size} (품절 임박 - 1개 남음)`;
+                        } else if (option.stock === 1) {
+                            optElem.textContent = `${option.size} (품절 임박 - 1개 남음)`;
                         } else {
-                            optElem.textContent = `${opt.size} (재고: ${opt.stock}개)`;
+                            optElem.textContent = `${option.size} (재고: ${option.stock}개)`;
                         }
                         sizeSelect.appendChild(optElem);
                     });
