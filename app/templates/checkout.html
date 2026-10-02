@@ -460,17 +460,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    // 모달 창에 정보 주입
+                    // 헤더의 장바구니 뱃지 숫자 0으로 갱신
+                    const cartBadges = document.querySelectorAll(".cart-count-badge, .badge-cart-count, #cartBadge");
+                    cartBadges.forEach(b => b.textContent = "0");
+
+                    // 8. /order/complete/<order_id> 로 즉시 리다이렉트
+                    if (result.redirect_url) {
+                        window.location.href = result.redirect_url;
+                        return;
+                    }
+
+                    // 폴백: 모달 표시
                     document.getElementById("modalOrderNumber").textContent = result.order_number || "-";
                     document.getElementById("modalRecipient").textContent = result.recipient_name || recipientName;
                     document.getElementById("modalAddress").textContent = result.shipping_address || shippingAddress;
                     document.getElementById("modalFinalAmount").textContent = result.formatted_final_amount || "{{ formatted_final_amount }}";
 
-                    // 헤더의 장바구니 뱃지 숫자 0으로 갱신
-                    const cartBadges = document.querySelectorAll(".cart-count-badge, .badge-cart-count, #cartBadge");
-                    cartBadges.forEach(b => b.textContent = "0");
-
-                    // 주문 완료 모달 표시
                     const successModal = new bootstrap.Modal(document.getElementById("orderSuccessModal"), {
                         backdrop: "static",
                         keyboard: false
