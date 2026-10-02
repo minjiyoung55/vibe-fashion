@@ -108,7 +108,7 @@
                     </button>
                 </div>
                 <div class="card-body p-4">
-                    <form id="shippingForm" novalidate>
+                    <form id="shippingForm" action="{{ url_for('main.create_order') }}" method="POST">
                         <!-- 수령인 이름 -->
                         <div class="mb-3">
                             <label for="recipientName" class="form-label fw-semibold text-dark">
@@ -161,6 +161,9 @@
                     </form>
                 </div>
             </div>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- 오른쪽 열: 결제 금액 요약 및 결제하기 버튼 -->
@@ -205,7 +208,7 @@
 
                     <!-- 결제하기 버튼 (클릭 즉시 버튼 비활성화로 중복 클릭 방지) -->
                     <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow" id="submitOrderBtn">
+                        <button type="button" class="btn btn-primary btn-lg rounded-pill fw-bold py-3 shadow" id="submitOrderBtn" onclick="submitOrderHandler(event)">
                             <i class="bi bi-check2-circle me-1"></i>결제하기
                         </button>
                         <a href="{{ url_for('main.view_cart') }}" class="btn btn-outline-secondary rounded-pill py-2.5 small fw-semibold">
@@ -265,6 +268,132 @@
 </div>
 
 <script>
+// 전역 결제 실행 함수 (어떤 브라우저 환경에서도 즉각 호출 보장)
+async function submitOrderHandler(event) {
+    if (event) event.preventDefault();
+
+    const recipientNameInput = document.getElementById("recipientName");
+    const recipientPhoneInput = document.getElementById("recipientPhone");
+    const shippingAddressInput = document.getElementById("shippingAddress");
+    const shippingMemoInput = document.getElementById("shippingMemo");
+    const submitOrderBtn = document.getElementById("submitOrderBtn");
+
+    if (!recipientNameInput || !recipientPhoneInput || !shippingAddressInput) {
+        alert("배송지 입력 폼을 찾을 수 없습니다.");
+        return;
+    }
+
+    const recipientName = recipientNameInput.value.trim();
+    const recipientPhone = recipientPhoneInput.value.trim();
+    const shippingAddress = shippingAddressInput.value.trim();
+    const shippingMemo = shippingMemoInput ? shippingMemoInput.value.trim() : "";
+
+    // 1. 수령인 검증
+    if (!recipientName || recipientName.length < 2) {
+        recipientNameInput.classList.add("is-invalid");
+        recipientNameInput.focus();
+        alert("수령인 이름을 2자 이상 입력해 주세요.");
+        return;
+    } else {
+        recipientNameInput.classList.remove("is-invalid");
+    }
+
+    // 2. 휴대폰 번호 검증: 010-0000-0000 패턴 (13자리 완벽 일치 또는 하이픈 정규화)
+    const cleanPhone = recipientPhone.replace(/[^0-9]/g, "");
+    let formattedPhone = recipientPhone;
+    if (cleanPhone.length === 11 && cleanPhone.startsWith("010")) {
+        formattedPhone = cleanPhone.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+        recipientPhoneInput.value = formattedPhone;
+    }
+
+    const phoneRegex = /^010-\d{4}-\d{4}$/;
+    if (!phoneRegex.test(formattedPhone)) {
+        recipientPhoneInput.classList.add("is-invalid");
+        recipientPhoneInput.focus();
+        alert("휴대폰 번호는 010-0000-0000 형식으로 11자리를 입력해 주세요.");
+        return;
+    } else {
+        recipientPhoneInput.classList.remove("is-invalid");
+    }
+
+    // 3. 배송 주소 검증: 최소 5자 이상
+    if (!shippingAddress || shippingAddress.length < 5) {
+        shippingAddressInput.classList.add("is-invalid");
+        shippingAddressInput.focus();
+        alert("배송 주소를 최소 5자 이상 상세히 입력해 주세요.");
+        return;
+    } else {
+        shippingAddressInput.classList.remove("is-invalid");
+    }
+
+    // 클릭 즉시 버튼 비활성화 (중복 클릭 방지)
+    if (submitOrderBtn) {
+        submitOrderBtn.disabled = true;
+        submitOrderBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>결제 처리 중...';
+    }
+
+    try {
+        const response = await fetch("/order/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                recipient_name: recipientName,
+                recipient_phone: formattedPhone,
+                shipping_address: shippingAddress,
+                shipping_memo: shippingMemo
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            // 헤더의 장바구니 뱃지 숫자 0으로 갱신
+            const cartBadges = document.querySelectorAll(".cart-count-badge, .badge-cart-count, #cartBadge, #cartCountBadge");
+            cartBadges.forEach(b => b.textContent = "0");
+
+            // 주문 완료 화면으로 즉시 이동
+            if (result.redirect_url) {
+                window.location.href = result.redirect_url;
+                return;
+            } else if (result.order_id) {
+                window.location.href = "/order/complete/" + result.order_id;
+                return;
+            }
+
+            // 폴백: 모달 표시
+            document.getElementById("modalOrderNumber").textContent = result.order_number || "-";
+            document.getElementById("modalRecipient").textContent = result.recipient_name || recipientName;
+            document.getElementById("modalAddress").textContent = result.shipping_address || shippingAddress;
+            document.getElementById("modalFinalAmount").textContent = result.formatted_final_amount || "{{ formatted_final_amount }}";
+
+            const successModal = new bootstrap.Modal(document.getElementById("orderSuccessModal"), {
+                backdrop: "static",
+                keyboard: false
+            });
+            successModal.show();
+        } else {
+            alert("❌ 결제 실패: " + (result.message || "주문 처리 중 오류가 발생했습니다."));
+            if (submitOrderBtn) {
+                submitOrderBtn.disabled = false;
+                submitOrderBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>결제하기';
+            }
+        }
+    } catch (err) {
+        console.error("주문 생성 통신 오류:", err);
+        // fetch 실패 시 일반 Form submit으로 폴백 전송
+        const shippingForm = document.getElementById("shippingForm");
+        if (shippingForm) {
+            shippingForm.submit();
+            return;
+        }
+        alert("❌ 결제 처리 중 통신 오류가 발생했습니다: " + err.message);
+        if (submitOrderBtn) {
+            submitOrderBtn.disabled = false;
+            submitOrderBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>결제하기';
+        }
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const recipientNameInput = document.getElementById("recipientName");
     const recipientPhoneInput = document.getElementById("recipientPhone");
