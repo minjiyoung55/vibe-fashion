@@ -415,17 +415,26 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!recipientName || recipientName.length < 2) {
                 recipientNameInput.classList.add("is-invalid");
                 recipientNameInput.focus();
-                isValid = false;
+                alert("수령인 이름을 2자 이상 입력해 주세요.");
+                return;
             } else {
                 recipientNameInput.classList.remove("is-invalid");
             }
 
-            // 휴대폰 번호 검증: 010-0000-0000 패턴
+            // 휴대폰 번호 검증: 010-0000-0000 패턴 (13자리 완벽 일치 또는 하이픈 정규화)
+            const cleanPhone = recipientPhone.replace(/[^0-9]/g, "");
+            let formattedPhone = recipientPhone;
+            if (cleanPhone.length === 11 && cleanPhone.startsWith("010")) {
+                formattedPhone = cleanPhone.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+                recipientPhoneInput.value = formattedPhone;
+            }
+
             const phoneRegex = /^010-\d{4}-\d{4}$/;
-            if (!phoneRegex.test(recipientPhone)) {
+            if (!phoneRegex.test(formattedPhone)) {
                 recipientPhoneInput.classList.add("is-invalid");
-                if (isValid) recipientPhoneInput.focus();
-                isValid = false;
+                recipientPhoneInput.focus();
+                alert("휴대폰 번호는 010-0000-0000 형식으로 11자리를 입력해 주세요.");
+                return;
             } else {
                 recipientPhoneInput.classList.remove("is-invalid");
             }
@@ -433,13 +442,12 @@ document.addEventListener("DOMContentLoaded", () => {
             // 배송 주소 검증: 최소 5자 이상
             if (!shippingAddress || shippingAddress.length < 5) {
                 shippingAddressInput.classList.add("is-invalid");
-                if (isValid) shippingAddressInput.focus();
-                isValid = false;
+                shippingAddressInput.focus();
+                alert("배송 주소를 최소 5자 이상 상세히 입력해 주세요.");
+                return;
             } else {
                 shippingAddressInput.classList.remove("is-invalid");
             }
-
-            if (!isValid) return;
 
             // 클릭 즉시 버튼 비활성화 (중복 클릭 방지)
             submitOrderBtn.disabled = true;
@@ -451,7 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         recipient_name: recipientName,
-                        recipient_phone: recipientPhone,
+                        recipient_phone: formattedPhone,
                         shipping_address: shippingAddress,
                         shipping_memo: shippingMemo
                     })
@@ -461,12 +469,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (response.ok && result.success) {
                     // 헤더의 장바구니 뱃지 숫자 0으로 갱신
-                    const cartBadges = document.querySelectorAll(".cart-count-badge, .badge-cart-count, #cartBadge");
+                    const cartBadges = document.querySelectorAll(".cart-count-badge, .badge-cart-count, #cartBadge, #cartCountBadge");
                     cartBadges.forEach(b => b.textContent = "0");
 
                     // 8. /order/complete/<order_id> 로 즉시 리다이렉트
                     if (result.redirect_url) {
-                        window.location.href = result.redirect_url;
+                        window.location.replace(result.redirect_url);
                         return;
                     }
 
@@ -488,7 +496,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (err) {
                 console.error("주문 생성 오류:", err);
-                alert("❌ 결제 처리 중 통신 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+                alert("❌ 결제 처리 중 통신 오류가 발생했습니다: " + err.message);
                 submitOrderBtn.disabled = false;
                 submitOrderBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>결제하기';
             }
