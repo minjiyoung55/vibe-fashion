@@ -583,7 +583,88 @@ def mypage():
     if "is_email_user" not in profile_data:
         profile_data["is_email_user"] = not session.get("user_email", "").startswith("kakao_")
 
-    return render_template("mypage.html", profile=profile_data)
+    # 3. 로그인 사용자의 실제 주문 내역(orders + order_items + products) 조회
+    orders_list = []
+    try:
+        if admin_sb:
+            orders_res = (
+                admin_sb.table("orders")
+                .select("*, order_items(*, products(id, name, product_images(image_url, is_thumbnail)))")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            raw_orders = orders_res.data or []
+
+            for ord_row in raw_orders:
+                items_data = []
+                for it in ord_row.get("order_items") or []:
+                    prod = it.get("products") or {}
+                    images = prod.get("product_images") or []
+                    thumb = None
+                    for img in images:
+                        if img.get("is_thumbnail"):
+                            thumb = img.get("image_url")
+                            break
+                    if not thumb and images:
+                        thumb = images[0].get("image_url")
+                    if not thumb:
+                        thumb = "https://picsum.photos/seed/vibe-product/100/120"
+
+                    u_price = int(float(it.get("unit_price") or 0))
+                    sub_price = int(float(it.get("subtotal_price") or 0))
+
+                    items_data.append({
+                        "id": it.get("id"),
+                        "product_id": it.get("product_id"),
+                        "product_name": it.get("product_name"),
+                        "option_description": it.get("option_description") or "",
+                        "quantity": it.get("quantity"),
+                        "unit_price": u_price,
+                        "formatted_unit_price": f"{u_price:,}원",
+                        "subtotal_price": sub_price,
+                        "formatted_subtotal_price": f"{sub_price:,}원",
+                        "thumbnail_url": thumb
+                    })
+
+                t_amount = int(float(ord_row.get("total_amount") or 0))
+                f_amount = int(float(ord_row.get("final_amount") or 0))
+                c_date = ord_row.get("created_at") or ""
+                formatted_created_at = c_date[:19].replace("T", " ") if c_date else ""
+
+                status_map = {
+                    "PAID": "결제완료",
+                    "PREPARING": "상품준비중",
+                    "SHIPPED": "배송중",
+                    "DELIVERED": "배송완료",
+                    "CANCELLED": "주문취소",
+                    "REFUNDED": "환불완료",
+                    "PENDING": "입금대기"
+                }
+                raw_status = ord_row.get("status") or "PAID"
+                status_label = status_map.get(raw_status.upper(), raw_status)
+
+                orders_list.append({
+                    "id": ord_row.get("id"),
+                    "order_number": ord_row.get("order_number"),
+                    "status": raw_status,
+                    "status_label": status_label,
+                    "total_amount": t_amount,
+                    "formatted_total_amount": f"{t_amount:,}원",
+                    "final_amount": f_amount,
+                    "formatted_final_amount": f"{f_amount:,}원",
+                    "recipient_name": ord_row.get("recipient_name"),
+                    "recipient_phone": ord_row.get("recipient_phone"),
+                    "shipping_address": ord_row.get("shipping_address"),
+                    "shipping_memo": ord_row.get("shipping_memo"),
+                    "created_at": formatted_created_at,
+                    "order_items": items_data,
+                    "item_count": len(items_data)
+                })
+    except Exception as oe:
+        logger.error(f"마이페이지 주문 내역 조회 실패: {oe}")
+
+    return render_template("mypage.html", profile=profile_data, orders=orders_list)
 
 
 # ==============================================================
