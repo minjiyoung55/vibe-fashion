@@ -75,45 +75,149 @@
     </div>
 </div>
 
-<!-- 신규 상품 등록 모달 -->
+<!-- 신규 상품 등록 모달 (다중 이미지 & 색상/사이즈 옵션 빌더 지원) -->
 <div class="modal fade" id="newProductModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header border-bottom py-3 px-4">
-                <h5 class="modal-title fw-bold text-dark">신규 상품 등록</h5>
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center">
+                    <i class="bi bi-box-seam text-primary me-2"></i>신규 상품 및 다중 옵션 빌더
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('admin.create_product') }}" method="POST">
                 <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">상품명 <span class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control" placeholder="예: 스프링 니트 가디건" required>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">판매가 (원) <span class="text-danger">*</span></label>
-                            <input type="number" name="price" class="form-control" placeholder="49000" required min="100">
+                    <!-- 기본 정보 -->
+                    <h6 class="fw-bold text-primary mb-3">1. 기본 정보</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-7">
+                            <label class="form-label small fw-bold">상품명 <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" placeholder="예: [단독] 프렌치 린넨 오버핏 셔츠" required>
                         </div>
-                        <div class="col-6">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">카테고리</label>
+                            <select name="category_id" class="form-select">
+                                <option value="">카테고리 선택 (선택 안함)</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">판매가 (원) <span class="text-danger">*</span></label>
+                            <input type="number" name="price" class="form-control" placeholder="45000" required min="100">
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label small fw-bold">할인율 (%)</label>
                             <input type="number" name="discount_rate" class="form-control" placeholder="0" min="0" max="100" value="0">
                         </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">상품 상세 설명</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="자연스러운 핏과 통기성이 우수한 프리미엄 린넨 셔츠입니다."></textarea>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">상품 설명</label>
-                        <textarea name="description" class="form-control" rows="3" placeholder="상품에 대한 매력적인 소개를 입력해 주세요."></textarea>
+
+                    <hr class="text-muted">
+
+                    <!-- 2. 다중 착용컷 이미지 등록 -->
+                    <h6 class="fw-bold text-primary mb-2">2. 다중 착용컷 이미지 등록</h6>
+                    <p class="text-muted small mb-2">
+                        상품 대표 썸네일과 상세 착용컷 이미지 URL을 줄바꿈(엔터)하여 여러 줄로 입력하세요. 첫 번째 이미지가 대표 썸네일로 자동 지정됩니다.
+                    </p>
+                    <div class="mb-4">
+                        <textarea name="image_urls" class="form-control font-monospace small" rows="3" placeholder="https://example.com/image1.jpg (대표 썸네일)&#10;https://example.com/image2.jpg (착용컷 1)&#10;https://example.com/image3.jpg (착용컷 2)"></textarea>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">초기 재고 수량</label>
-                        <input type="number" name="stock" class="form-control" placeholder="50" value="50" min="0">
+
+                    <hr class="text-muted">
+
+                    <!-- 3. 색상 / 사이즈 옵션 빌더 -->
+                    <h6 class="fw-bold text-primary mb-2">3. 색상 및 사이즈 옵션 빌더 (조합 자동 생성)</h6>
+                    <p class="text-muted small mb-3">
+                        입력한 색상과 사이즈를 바탕으로 (색상 x 사이즈) 옵션과 재고가 자동으로 곱해져 생성됩니다.
+                    </p>
+
+                    <div class="row g-3 bg-light p-3 rounded-3 border mb-3">
+                        <!-- 색상 목록 -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">색상 목록 (쉼표 구분) <span class="text-danger">*</span></label>
+                            <input type="text" name="colors" id="builderColors" class="form-control form-control-sm" placeholder="예: 화이트, 블랙, 스카이블루" value="화이트, 블랙">
+                            <small class="text-muted">쉼표(,)로 구분하여 입력하세요.</small>
+                        </div>
+
+                        <!-- 사이즈 프리셋 체크박스 -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">사이즈 선택 (다중 선택)</label>
+                            <div class="d-flex flex-wrap gap-2 pt-1 mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input builder-size-chk" type="checkbox" name="sizes" value="S" id="sizeS" checked>
+                                    <label class="form-check-label small" for="sizeS">S</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input builder-size-chk" type="checkbox" name="sizes" value="M" id="sizeM" checked>
+                                    <label class="form-check-label small" for="sizeM">M</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input builder-size-chk" type="checkbox" name="sizes" value="L" id="sizeL" checked>
+                                    <label class="form-check-label small" for="sizeL">L</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input builder-size-chk" type="checkbox" name="sizes" value="XL" id="sizeXL">
+                                    <label class="form-check-label small" for="sizeXL">XL</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input builder-size-chk" type="checkbox" name="sizes" value="FREE" id="sizeFREE">
+                                    <label class="form-check-label small" for="sizeFREE">FREE</label>
+                                </div>
+                            </div>
+                            <input type="text" name="custom_sizes" class="form-control form-control-sm" placeholder="기타 추가 사이즈 (예: 25, 26, 27)">
+                        </div>
+
+                        <!-- 조합당 초기 재고 수량 -->
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">각 옵션별 초기 재고 수량 (개)</label>
+                            <input type="number" name="initial_stock" id="builderStock" class="form-control form-control-sm" value="30" min="0" style="max-width: 140px;">
+                            <div class="mt-2 text-primary small fw-semibold" id="builderPreviewText">
+                                <i class="bi bi-info-circle me-1"></i>예상 생성 옵션: 총 6개 (색상 2종 x 사이즈 3종), 총 재고: 180개
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top py-2 px-4">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-primary btn-sm">등록하기</button>
+                <div class="modal-footer border-top py-2.5 px-4">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold">상품 및 옵션 일괄 등록</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 옵션 빌더 실시간 조합 예상 계산기
+    function calculateBuilderPreview() {
+        const colorsInput = document.getElementById("builderColors");
+        const stockInput = document.getElementById("builderStock");
+        const sizeCheckboxes = document.querySelectorAll(".builder-size-chk:checked");
+        const previewText = document.getElementById("builderPreviewText");
+
+        if (!colorsInput || !previewText) return;
+
+        const colors = colorsInput.value.split(",").map(c => c.trim()).filter(Boolean);
+        const colorCount = colors.length || 1;
+        const sizeCount = sizeCheckboxes.length || 1;
+        const stock = parseInt(stockInput.value, 10) || 0;
+
+        const totalCombinations = colorCount * sizeCount;
+        const totalStock = totalCombinations * stock;
+
+        previewText.innerHTML = `<i class="bi bi-check2-circle text-success me-1"></i>예상 생성 옵션: 총 <strong>${totalCombinations}개</strong> 조합 (색상 ${colorCount}종 × 사이즈 ${sizeCount}종), 초기 총 재고: <strong>${totalStock.toLocaleString()}개</strong>`;
+    }
+
+    document.getElementById("builderColors")?.addEventListener("input", calculateBuilderPreview);
+    document.getElementById("builderStock")?.addEventListener("input", calculateBuilderPreview);
+    document.querySelectorAll(".builder-size-chk").forEach(chk => {
+        chk.addEventListener("change", calculateBuilderPreview);
+    });
+</script>
 {% endblock %}

@@ -292,6 +292,34 @@ def update_order_status(order_id: str):
     return redirect(url_for("admin.orders"))
 
 
+# 일괄 주문 상태 변경 (POST /admin/orders/bulk-status)
+@admin_bp.route("/orders/bulk-status", methods=["POST"])
+@admin_required
+def bulk_update_order_status():
+    """선택한 주문 여러 건의 상태를 한 번에 일괄 변경"""
+    order_ids = request.form.getlist("order_ids")
+    new_status = (request.form.get("status") or "").strip()
+
+    if not order_ids:
+        flash("상태를 변경할 주문을 하나 이상 선택해 주세요.", "warning")
+        return redirect(url_for("admin.orders"))
+
+    if not new_status:
+        flash("변경할 주문 상태를 선택해 주세요.", "warning")
+        return redirect(url_for("admin.orders"))
+
+    sb = get_supabase_admin_client()
+    if sb:
+        try:
+            sb.table("orders").update({"status": new_status}).in_("id", order_ids).execute()
+            flash(f"선택한 {len(order_ids)}건의 주문 상태가 '{new_status}'(으)로 일괄 변경되었습니다.", "success")
+        except Exception as e:
+            logger.error(f"주문 일괄 상태 변경 실패: {e}")
+            flash(f"일괄 상태 변경 실패: {str(e)}", "danger")
+
+    return redirect(url_for("admin.orders"))
+
+
 # ==============================================================
 # 3. 배송 관리 (GET /admin/deliveries)
 # ==============================================================
@@ -353,9 +381,14 @@ def update_delivery(order_id: str):
 def products():
     sb = get_supabase_admin_client()
     products_list = []
+    categories_list = []
 
     if sb:
         try:
+            # 카테고리 목록 조회
+            cat_res = sb.table("categories").select("id, name").order("id").execute()
+            categories_list = cat_res.data or []
+
             res = sb.table("products").select("*, categories(name), product_images(image_url, is_thumbnail), product_options(stock)").order("created_at", desc=True).execute()
             raw_prods = res.data or []
 
@@ -389,47 +422,115 @@ def products():
         except Exception as e:
             logger.error(f"상품 목록 조회 실패: {e}")
 
-    return render_template("admin/products.html", active_menu="products", products=products_list)
+    return render_template("admin/products.html", active_menu="products", products=products_list, categories=categories_list)
 
 
-# 신규 상품 등록 (POST /admin/products/create)
+# 신규 상품 등록 (POST /admin/products/create) - 다중 이미지 및 색상/사이즈 옵션 빌더 지원
 @admin_bp.route("/products/create", methods=["POST"])
 @admin_required
 def create_product():
-    name = request.form.get("name", "").strip()
+    """
+    상품 등록 시:
+    1. 상품 기본 정보 (이름, 카테고리, 판매가, 할인율, 상세설명) products 테이블 등록
+    2. 다중 착용컷 이미지 URL 목록 (줄바꿈 구분) product_images 테이블 등록 (첫번째는 썸네일 자동 지정)
+    3. 색상(쉼표) x 사이즈(체크박스/쉼표) 조합을 계산하여 옵션별 재고/추가가격 일괄 생성
+    """
+    name = (request.form.get("name") or "").strip()
+    category_id = request.form.get("category_id")
     price = request.form.get("price", 0)
     discount_rate = request.form.get("discount_rate", 0)
-    description = request.form.get("description", "").strip()
-    stock = request.form.get("stock", 50)
+    description = (request.form.get("description") or "").strip()
+    
+    # 1. 다중 이미지 URL 목록 (텍스트에 한 줄씩 여러 장 입력)
+    image_urls_raw = (request.form.get("image_urls") or "").strip()
+    image_urls = [line.strip() for line in image_urls_raw.splitlines() if line.strip()]
+
+    # 2. 색상 목록 (쉼표 구분) & 사이즈 목록 (체크박스 또는 쉼표 구분)
+    colors_raw = (request.form.get("colors") or "").strip()
+    colors = [c.strip() for c in colors_raw.split(",") if c.strip()]
+    if not colors:
+        colors = ["기본"]
+
+    sizes = request.form.getlist("sizes")
+    custom_sizes = (request.form.get("custom_sizes") or "").strip()
+    if custom_sizes:
+        for s in custom_sizes.split(","):
+            s_clean = s.strip()
+            if s_clean and s_clean not in sizes:
+                sizes.append(s_clean)
+    if not sizes:
+        sizes = ["FREE"]
+
+    initial_stock = int(request.form.get("initial_stock", 30))
 
     sb = get_supabase_admin_client()
     if sb and name:
         try:
             import uuid
-            slug = f"prod-{uuid.uuid4().hex[:6]}"
-            new_p = sb.table("products").insert({
+            slug = f"prod-{uuid.uuid4().hex[:8]}"
+            total_stock_calc = initial_stock * len(colors) * len(sizes)
+            product_payload = {
                 "name": name,
                 "slug": slug,
                 "price": float(price),
                 "discount_rate": float(discount_rate),
                 "description": description,
-                "stock": int(stock)
-            }).execute()
+                "stock_quantity": total_stock_calc,
+                "status": "ON_SALE"
+            }
+            if category_id:
+                try:
+                    product_payload["category_id"] = int(category_id)
+                except ValueError:
+                    pass
+
+            new_p = sb.table("products").insert(product_payload).execute()
 
             if new_p.data:
                 p_id = new_p.data[0]["id"]
-                # 기본 옵션 1개 생성
-                sb.table("product_options").insert({
-                    "product_id": p_id,
-                    "option_type": "FREE",
-                    "option_value": "Free",
-                    "color": "기본",
-                    "size": "FREE",
-                    "stock": int(stock),
-                    "stock_quantity": int(stock)
-                }).execute()
 
-            flash("상품이 성공적으로 등록되었습니다.", "success")
+                # A. 다중 이미지 등록 (첫 번째 이미지는 썸네일 지정)
+                if image_urls:
+                    img_records = []
+                    for idx, img_url in enumerate(image_urls):
+                        img_records.append({
+                            "product_id": p_id,
+                            "image_url": img_url,
+                            "display_order": idx + 1,
+                            "is_thumbnail": (idx == 0)
+                        })
+                    sb.table("product_images").insert(img_records).execute()
+                else:
+                    # 기본 플레이스홀더 이미지 등록
+                    sb.table("product_images").insert({
+                        "product_id": p_id,
+                        "image_url": "https://picsum.photos/seed/vibe-product/600/700",
+                        "display_order": 1,
+                        "is_thumbnail": True
+                    }).execute()
+
+                # B. 색상 x 사이즈 옵션 조합 빌더 자동 생성
+                option_records = []
+                for col in colors:
+                    for sz in sizes:
+                        option_records.append({
+                            "product_id": p_id,
+                            "option_type": "COMBINATION",
+                            "option_value": f"{col} / {sz}",
+                            "color": col,
+                            "size": sz,
+                            "additional_price": 0.0,
+                            "stock": initial_stock,
+                            "stock_quantity": initial_stock
+                        })
+
+                if option_records:
+                    sb.table("product_options").insert(option_records).execute()
+
+                flash(f"상품 '{name}'이(가) 등록되었습니다. (이미지 {len(image_urls) or 1}장, 옵션 조합 {len(option_records)}개 생성 완료)", "success")
+            else:
+                flash("상품 저장에 실패했습니다.", "danger")
+
         except Exception as e:
             logger.error(f"상품 등록 실패: {e}")
             flash(f"상품 등록 실패: {str(e)}", "danger")
