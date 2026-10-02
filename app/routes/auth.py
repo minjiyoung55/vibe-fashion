@@ -90,6 +90,16 @@ def login():
         if res.session and getattr(res.session, "access_token", None):
             session["access_token"] = res.session.access_token
 
+        # profiles 테이블에서 role 확인 후 세션에 저장
+        admin_sb = get_supabase_admin_client()
+        if admin_sb:
+            try:
+                p_res = admin_sb.table("profiles").select("role").eq("id", user.id).maybe_single().execute()
+                if p_res and p_res.data:
+                    session["user_role"] = p_res.data.get("role", "CUSTOMER")
+            except Exception:
+                pass
+
         return redirect(url_for("auth.mypage", message="로그인되었습니다."))
 
     except Exception as e:
