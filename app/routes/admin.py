@@ -539,35 +539,137 @@ def create_product():
 
 
 # ==============================================================
-# 5. 재고 관리 (GET /admin/inventory)
+# 5. 재고 관리 (GET /admin/inventory) - 상품별 그룹화 뷰
 # ==============================================================
 @admin_bp.route("/inventory")
 @admin_required
 def inventory():
+    """
+    재고 관리:
+    - 같은 상품에 여러 옵션이 있는 경우, 상품 단위 1개 행으로 요약 그룹화
+    - 클릭 시 해당 상품 하위의 옵션(색상/사이즈/수량)이 아코디언 형태로 펼쳐짐
+    - 상품별 총 재고, 색상 수, 사이즈 수, 품절 여부 한눈에 파악 가능
+    - 검색(상품명) 및 필터(전체/품절포함/품절임박) 지원
+    """
     sb = get_supabase_admin_client()
-    inventory_list = []
+    keyword = (request.args.get("keyword") or "").strip().lower()
+    stock_filter = (request.args.get("filter") or "").strip()
+
+    product_inventory = []
+    summary = {
+        "total_products": 0,
+        "total_options": 0,
+        "total_stock_all": 0,
+        "out_of_stock_options": 0,
+        "low_stock_options": 0
+    }
 
     if sb:
         try:
-            res = sb.table("product_options").select("*, products(name)").order("stock", desc=False).execute()
-            raw_opts = res.data or []
+            res = (
+                sb.table("products")
+                .select("id, name, price, product_images(image_url, is_thumbnail), product_options(id, color, size, stock, stock_quantity)")
+                .order("created_at", desc=True)
+                .execute()
+            )
+            raw_products = res.data or []
 
-            for op in raw_opts:
-                p_info = op.get("products") or {}
-                p_name = p_info.get("name") if isinstance(p_info, dict) else "상품"
+            for p in raw_products:
+                p_name = p.get("name") or "상품"
+                if keyword and keyword not in p_name.lower():
+                    continue
 
-                inventory_list.append({
-                    "id": op.get("id"),
-                    "product_name": p_name,
-                    "color": op.get("color") or "기본",
-                    "size": op.get("size") or "FREE",
-                    "stock": int(op.get("stock") or 0)
+                imgs = p.get("product_images") or []
+                thumb = None
+                for im in imgs:
+                    if im.get("is_thumbnail"):
+                        thumb = im.get("image_url")
+                        break
+                if not thumb and imgs:
+                    thumb = imgs[0].get("image_url")
+                if not thumb:
+                    thumb = "https://picsum.photos/seed/vibe-product/100/120"
+
+                raw_options = p.get("product_options") or []
+                # 옵션 ID 순 정렬
+                raw_options.sort(key=lambda x: x.get("id", 0))
+
+                options = []
+                total_stock = 0
+                out_of_stock_count = 0
+                low_stock_count = 0
+                colors_set = set()
+                sizes_set = set()
+
+                for op in raw_options:
+                    c = op.get("color") or "기본"
+                    s = op.get("size") or "FREE"
+                    stk = int(op.get("stock") or 0)
+
+                    colors_set.add(c)
+                    sizes_set.add(s)
+                    total_stock += stk
+
+                    if stk == 0:
+                        out_of_stock_count += 1
+                        summary["out_of_stock_options"] += 1
+                    elif stk <= 3:
+                        low_stock_count += 1
+                        summary["low_stock_options"] += 1
+
+                    options.append({
+                        "id": op.get("id"),
+                        "color": c,
+                        "size": s,
+                        "stock": stk
+                    })
+
+                summary["total_options"] += len(options)
+                summary["total_stock_all"] += total_stock
+
+                # 필터 적용
+                if stock_filter == "out_of_stock" and out_of_stock_count == 0:
+                    continue
+                if stock_filter == "low_stock" and (out_of_stock_count == 0 and low_stock_count == 0):
+                    continue
+
+                # 상품 종합 상태 산출
+                if len(options) == 0:
+                    status_badge = '<span class="badge bg-secondary-subtle text-dark">옵션 없음</span>'
+                elif out_of_stock_count == len(options):
+                    status_badge = '<span class="badge bg-danger">전체 품절</span>'
+                elif out_of_stock_count > 0:
+                    status_badge = f'<span class="badge bg-danger-subtle text-danger border border-danger-subtle">일부 품절 ({out_of_stock_count}건)</span>'
+                elif low_stock_count > 0:
+                    status_badge = f'<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">품절 임박 ({low_stock_count}건)</span>'
+                else:
+                    status_badge = '<span class="badge bg-success-subtle text-success">정상 (여유)</span>'
+
+                product_inventory.append({
+                    "id": p.get("id"),
+                    "name": p_name,
+                    "thumbnail_url": thumb,
+                    "options": options,
+                    "option_count": len(options),
+                    "total_stock": total_stock,
+                    "colors_list": sorted(list(colors_set)),
+                    "sizes_list": sorted(list(sizes_set)),
+                    "out_of_stock_count": out_of_stock_count,
+                    "low_stock_count": low_stock_count,
+                    "status_badge": status_badge
                 })
+
+            summary["total_products"] = len(product_inventory)
 
         except Exception as e:
             logger.error(f"재고 목록 조회 실패: {e}")
 
-    return render_template("admin/inventory.html", active_menu="inventory", inventory=inventory_list)
+    return render_template(
+        "admin/inventory.html",
+        active_menu="inventory",
+        product_inventory=product_inventory,
+        summary=summary
+    )
 
 
 # 재고 수량 수정 (POST /admin/inventory/<option_id>/update)
@@ -581,7 +683,7 @@ def update_inventory(option_id: int):
         try:
             val = int(new_stock)
             sb.table("product_options").update({"stock": val, "stock_quantity": val}).eq("id", option_id).execute()
-            flash("재고 수량이 성공적으로 변경되었습니다.", "success")
+            flash(f"옵션(#{option_id})의 재고가 {val}개로 변경되었습니다.", "success")
         except Exception as e:
             logger.error(f"재고 수정 실패: {e}")
             flash(f"재고 수정 실패: {str(e)}", "danger")

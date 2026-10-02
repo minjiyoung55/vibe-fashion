@@ -1,67 +1,222 @@
 {% extends "admin/base_admin.html" %}
 
 {% block title %}재고 관리 - VIBE ADMIN{% endblock %}
-{% block page_title %}<i class="bi bi-boxes text-primary me-2"></i>재고 관리{% endblock %}
+{% block page_title %}<i class="bi bi-boxes text-primary me-2"></i>재고 관리 (상품별 요약 뷰){% endblock %}
 
 {% block content %}
 <div class="container-fluid px-0">
-    <!-- 안내 배너 -->
-    <div class="alert alert-warning border-0 rounded-3 d-flex align-items-center mb-4 p-3 shadow-xs">
-        <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
-        <div>
-            <div class="fw-bold">안전 재고 모니터링 시스템</div>
-            <div class="small text-muted">재고가 3개 이하인 옵션은 '품절 임박'으로 자동 분류되며 신속한 발주가 필요합니다.</div>
+
+    <!-- 상단 핵심 지표 요약 카드 -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100">
+                <span class="text-secondary small fw-semibold">관리 상품 수</span>
+                <h3 class="fw-bolder text-dark mt-1 mb-0">{{ summary.total_products }}개</h3>
+                <small class="text-muted">등록된 전체 상품 기준</small>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100">
+                <span class="text-secondary small fw-semibold">총 옵션 조합 수</span>
+                <h3 class="fw-bolder text-primary mt-1 mb-0">{{ summary.total_options }}개</h3>
+                <small class="text-muted">색상 × 사이즈 세부 옵션</small>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100 border-danger-subtle bg-danger-subtle bg-opacity-10">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-danger small fw-bold">품절 옵션 (재고 0개)</span>
+                    <span class="badge bg-danger rounded-pill">주의</span>
+                </div>
+                <h3 class="fw-bolder text-danger mt-1 mb-0">{{ summary.out_of_stock_options }}개</h3>
+                <small class="text-danger-emphasis">즉시 재입고 필요</small>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="admin-card p-3 h-100 border-warning-subtle bg-warning-subtle bg-opacity-10">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-warning-emphasis small fw-bold">품절 임박 (1~3개)</span>
+                    <span class="badge bg-warning text-dark rounded-pill">모니터링</span>
+                </div>
+                <h3 class="fw-bolder text-warning-emphasis mt-1 mb-0">{{ summary.low_stock_options }}개</h3>
+                <small class="text-muted">안전 재고 부족 구간</small>
+            </div>
         </div>
     </div>
 
-    <!-- 재고 목록 테이블 -->
+    <!-- 검색 및 필터 바 -->
+    <div class="admin-card p-3 mb-4">
+        <form method="GET" action="{{ url_for('admin.inventory') }}" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light text-secondary"><i class="bi bi-search"></i></span>
+                    <input type="text" name="keyword" class="form-control" placeholder="상품명으로 간편 검색" value="{{ request.args.get('keyword', '') }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="filter" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="" {% if not request.args.get('filter') %}selected{% endif %}>전체 상품 보기</option>
+                    <option value="out_of_stock" {% if request.args.get('filter') == 'out_of_stock' %}selected{% endif %}>품절 옵션 포함 상품만</option>
+                    <option value="low_stock" {% if request.args.get('filter') == 'low_stock' %}selected{% endif %}>품절/임박 포함 상품만</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">검색</button>
+                <a href="{{ url_for('admin.inventory') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-2">초기화</a>
+            </div>
+            <div class="col-md-3 text-end">
+                <button type="button" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-xs" id="toggleAllOptionsBtn">
+                    <i class="bi bi-chevron-expand me-1"></i>전체 옵션 펼치기 / 접기
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 상품별 그룹화 재고 관리 테이블 -->
     <div class="admin-card p-4">
-        <h6 class="fw-bold text-dark mb-3">옵션별 실시간 재고 현황 (총 {{ inventory|length }}건)</h6>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h6 class="fw-bold text-dark mb-0">
+                    상품별 재고 요약 목록 <span class="badge bg-secondary-subtle text-dark ms-1">{{ product_inventory|length }}종</span>
+                </h6>
+                <small class="text-muted">각 상품을 클릭하거나 [옵션 펼치기]를 누르면 색상/사이즈별 세부 재고를 확인하고 즉시 수정할 수 있습니다.</small>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light text-secondary small">
                     <tr>
-                        <th>옵션 ID</th>
+                        <th style="width: 50px;" class="text-center"></th>
+                        <th style="width: 70px;">이미지</th>
                         <th>상품명</th>
-                        <th>색상 / 사이즈</th>
-                        <th>현재 재고</th>
-                        <th>상태</th>
-                        <th class="text-center">재고 수량 수정</th>
+                        <th>옵션 구성 요약</th>
+                        <th class="text-center" style="width: 130px;">총 재고 합계</th>
+                        <th class="text-center" style="width: 140px;">재고 상태</th>
+                        <th class="text-end pe-3" style="width: 140px;">세부 옵션</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for opt in inventory %}
-                    <tr>
-                        <td class="font-monospace text-muted small">#{{ opt.id }}</td>
-                        <td class="fw-bold text-dark">{{ opt.product_name }}</td>
-                        <td>
-                            <span class="badge bg-light text-dark border me-1">{{ opt.color }}</span>
-                            <span class="badge bg-light text-dark border">{{ opt.size }}</span>
+                    {% for prod in product_inventory %}
+                    <!-- 상품 대표 1행 (요약) -->
+                    <tr class="product-summary-row" data-bs-toggle="collapse" data-bs-target="#collapseOptions-{{ loop.index }}" aria-expanded="false" style="cursor: pointer;">
+                        <td class="text-center text-muted">
+                            <i class="bi bi-chevron-right toggle-icon" id="icon-{{ loop.index }}"></i>
                         </td>
                         <td>
-                            <span class="fs-6 fw-bold {% if opt.stock == 0 %}text-danger{% elif opt.stock <= 3 %}text-warning-emphasis{% else %}text-success{% endif %}">
-                                {{ opt.stock }}개
-                            </span>
+                            <img src="{{ prod.thumbnail_url }}" alt="{{ prod.name }}" class="rounded-2 shadow-xs" style="width: 50px; height: 58px; object-fit: cover;">
                         </td>
                         <td>
-                            {% if opt.stock == 0 %}
-                            <span class="badge bg-danger-subtle text-danger rounded-pill px-2.5 py-1">품절</span>
-                            {% elif opt.stock <= 3 %}
-                            <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2.5 py-1">품절 임박</span>
-                            {% else %}
-                            <span class="badge bg-success-subtle text-success rounded-pill px-2.5 py-1">여유</span>
-                            {% endif %}
+                            <div class="fw-bold text-dark fs-6">{{ prod.name }}</div>
+                            <small class="text-muted font-monospace">{{ prod.id }}</small>
+                        </td>
+                        <td>
+                            <!-- 색상 및 사이즈 요약 뱃지 -->
+                            <div class="d-flex flex-wrap gap-1 align-items-center">
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-palette me-1 text-primary"></i>색상 {{ prod.colors_list|length }}종: {{ prod.colors_list|join(', ') }}
+                                </span>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-rulers me-1 text-secondary"></i>사이즈 {{ prod.sizes_list|length }}종: {{ prod.sizes_list|join(', ') }}
+                                </span>
+                                <span class="badge bg-primary-subtle text-primary fw-semibold">
+                                    총 {{ prod.option_count }}개 옵션 조합
+                                </span>
+                            </div>
                         </td>
                         <td class="text-center">
-                            <form action="{{ url_for('admin.update_inventory', option_id=opt.id) }}" method="POST" class="d-inline-flex gap-1 align-items-center">
-                                <input type="number" name="stock" class="form-control form-control-sm text-center" value="{{ opt.stock }}" min="0" style="width: 80px;" required>
-                                <button type="submit" class="btn btn-outline-primary btn-sm">저장</button>
-                            </form>
+                            <span class="fs-5 fw-bold {% if prod.total_stock == 0 %}text-danger{% elif prod.out_of_stock_count > 0 %}text-warning-emphasis{% else %}text-dark{% endif %}">
+                                {{ "{:,}".format(prod.total_stock) }}개
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            {{ prod.status_badge|safe }}
+                        </td>
+                        <td class="text-end pe-3" onclick="event.stopPropagation();">
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 option-toggle-btn" data-bs-toggle="collapse" data-bs-target="#collapseOptions-{{ loop.index }}" aria-expanded="false">
+                                <i class="bi bi-sliders me-1"></i>옵션 관리
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- 클릭 시 아래로 펼쳐지는 옵션 세부 테이블 (아코디언) -->
+                    <tr class="collapse-row p-0">
+                        <td colspan="7" class="p-0 border-0">
+                            <div class="collapse options-collapse-panel bg-light p-3 border-bottom" id="collapseOptions-{{ loop.index }}">
+                                <div class="bg-white rounded-3 border p-3 shadow-xs">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                        <div class="small fw-bold text-secondary">
+                                            <i class="bi bi-arrow-return-right me-1 text-primary"></i>
+                                            '{{ prod.name }}' 세부 색상 / 사이즈 재고 목록
+                                        </div>
+                                        <div class="small text-muted">
+                                            수량을 변경한 뒤 [저장]을 누르면 즉시 실시간 반영됩니다.
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered align-middle mb-0 text-center">
+                                            <thead class="table-light small text-secondary">
+                                                <tr>
+                                                    <th style="width: 80px;">옵션 ID</th>
+                                                    <th>색상 (Color)</th>
+                                                    <th>사이즈 (Size)</th>
+                                                    <th style="width: 120px;">현재 재고</th>
+                                                    <th style="width: 120px;">재고 상태</th>
+                                                    <th style="width: 180px;">재고 수량 수정</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for opt in prod.options %}
+                                                <tr>
+                                                    <td class="font-monospace text-muted small">#{{ opt.id }}</td>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark border px-2.5 py-1">
+                                                            {{ opt.color }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark border px-2.5 py-1">
+                                                            {{ opt.size }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <strong class="{% if opt.stock == 0 %}text-danger fs-6{% elif opt.stock <= 3 %}text-warning-emphasis fs-6{% else %}text-dark{% endif %}">
+                                                            {{ opt.stock }}개
+                                                        </strong>
+                                                    </td>
+                                                    <td>
+                                                        {% if opt.stock == 0 %}
+                                                        <span class="badge bg-danger rounded-pill px-2 py-1">품절</span>
+                                                        {% elif opt.stock <= 3 %}
+                                                        <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-1">품절 임박</span>
+                                                        {% else %}
+                                                        <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1">여유</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <form action="{{ url_for('admin.update_inventory', option_id=opt.id) }}" method="POST" class="d-inline-flex gap-1 justify-content-center align-items-center">
+                                                            <input type="number" name="stock" class="form-control form-control-sm text-center" value="{{ opt.stock }}" min="0" style="width: 75px;" required>
+                                                            <button type="submit" class="btn btn-primary btn-sm px-2.5 py-1">
+                                                                저장
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">등록된 옵션 재고가 없습니다.</td>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-box2 text-muted fs-2 d-block mb-2"></i>
+                            검색 조건에 일치하는 상품이 없습니다.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -69,4 +224,64 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. 아코디언 펼침/접힘 시 회전 아이콘 애니메이션
+    const collapsePanels = document.querySelectorAll('.options-collapse-panel');
+    collapsePanels.forEach(panel => {
+        panel.addEventListener('show.bs.collapse', function () {
+            const index = this.id.split('-')[1];
+            const icon = document.getElementById(`icon-${index}`);
+            if (icon) {
+                icon.classList.remove('bi-chevron-right');
+                icon.classList.add('bi-chevron-down', 'text-primary');
+            }
+        });
+
+        panel.addEventListener('hide.bs.collapse', function () {
+            const index = this.id.split('-')[1];
+            const icon = document.getElementById(`icon-${index}`);
+            if (icon) {
+                icon.classList.remove('bi-chevron-down', 'text-primary');
+                icon.classList.add('bi-chevron-right');
+            }
+        });
+    });
+
+    // 2. 전체 옵션 한 번에 펼치기 / 접기 토글
+    const toggleAllBtn = document.getElementById("toggleAllOptionsBtn");
+    let allExpanded = false;
+
+    if (toggleAllBtn) {
+        toggleAllBtn.addEventListener("click", () => {
+            allExpanded = !allExpanded;
+            collapsePanels.forEach(panel => {
+                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false });
+                if (allExpanded) {
+                    bsCollapse.show();
+                } else {
+                    bsCollapse.hide();
+                }
+            });
+
+            toggleAllBtn.innerHTML = allExpanded
+                ? '<i class="bi bi-chevron-contract me-1"></i>전체 옵션 접기'
+                : '<i class="bi bi-chevron-expand me-1"></i>전체 옵션 펼치기';
+        });
+    }
+});
+</script>
+
+<style>
+.product-summary-row:hover {
+    background-color: #f8fafc !important;
+}
+.toggle-icon {
+    font-size: 0.9rem;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+</style>
 {% endblock %}
