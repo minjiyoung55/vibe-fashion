@@ -45,22 +45,37 @@ def create_app(test_config=None):
     app.add_url_rule("/mypage", endpoint="mypage_root", view_func=auth.mypage, methods=["GET", "POST"])
     app.add_url_rule("/mypage/change-password", endpoint="change_password_root", view_func=auth.change_password, methods=["POST"])
 
-    # 템플릿 전역 변수 컨텍스트 프로세서 (로그인 사용자의 실시간 장바구니 개수 주입)
+    # 템플릿 전역 변수 컨텍스트 프로세서 (로그인 사용자의 실시간 장바구니 개수 및 관리자 여부 주입)
     @app.context_processor
-    def inject_cart_count():
+    def inject_global_vars():
         from flask import session
         user_id = session.get("user_id")
         if not user_id:
-            return {"user_cart_count": 0}
+            return {"user_cart_count": 0, "is_admin": False}
+
+        cart_count = 0
+        is_admin = session.get("user_role") == "ADMIN"
+
         try:
             from app.services.supabase_client import get_supabase_admin_client
             sb = get_supabase_admin_client()
             if sb:
+                # 1. 장바구니 수량
                 res = sb.table("carts").select("quantity").eq("user_id", user_id).execute()
-                count = sum(int(item.get("quantity") or 0) for item in (res.data or []))
-                return {"user_cart_count": count}
+                cart_count = sum(int(item.get("quantity") or 0) for item in (res.data or []))
+
+                # 2. 관리자 권한 확인 (세션에 없거나 최신 DB 확인 필요 시)
+                if not is_admin:
+                    p_res = sb.table("profiles").select("role").eq("id", user_id).maybe_single().execute()
+                    if p_res and p_res.data and p_res.data.get("role") == "ADMIN":
+                        is_admin = True
+                        session["user_role"] = "ADMIN"
         except Exception:
             pass
-        return {"user_cart_count": 0}
+
+        return {
+            "user_cart_count": cart_count,
+            "is_admin": is_admin
+        }
 
     return app
