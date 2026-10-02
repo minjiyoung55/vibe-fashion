@@ -44,4 +44,22 @@ def create_app(test_config=None):
     app.add_url_rule("/mypage", endpoint="mypage_root", view_func=auth.mypage, methods=["GET", "POST"])
     app.add_url_rule("/mypage/change-password", endpoint="change_password_root", view_func=auth.change_password, methods=["POST"])
 
+    # 템플릿 전역 변수 컨텍스트 프로세서 (로그인 사용자의 실시간 장바구니 개수 주입)
+    @app.context_processor
+    def inject_cart_count():
+        from flask import session
+        user_id = session.get("user_id")
+        if not user_id:
+            return {"user_cart_count": 0}
+        try:
+            from app.services.supabase_client import get_supabase_admin_client
+            sb = get_supabase_admin_client()
+            if sb:
+                res = sb.table("carts").select("quantity").eq("user_id", user_id).execute()
+                count = sum(int(item.get("quantity") or 0) for item in (res.data or []))
+                return {"user_cart_count": count}
+        except Exception:
+            pass
+        return {"user_cart_count": 0}
+
     return app

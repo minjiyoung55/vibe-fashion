@@ -16,35 +16,17 @@ document.addEventListener("DOMContentLoaded", () => {
         cartToast = new bootstrap.Toast(cartToastElement, { delay: 2500 });
     }
 
-    // 2. 브라우저 로컬스토리지에서 기존 장바구니 수량 가져오기
-    let cartCount = parseInt(localStorage.getItem("vibe_cart_count") || "0", 10);
-    if (cartCountBadge) {
-        cartCountBadge.textContent = cartCount;
-    }
+    // 2. 비로그인 상태일 때는 localStorage의 더미 장바구니 개수를 초기화하고 서버 주입값 우선 적용
+    // (더미 localStorage 숫자가 남아 비로그인인데 1로 뜨는 현상 방지)
+    localStorage.removeItem("vibe_cart_count");
 
-    // 3. '장바구니 담기' 버튼 클릭 이벤트 리스너 등록
+    // 3. 메인 추천 상품의 '장바구니 담기' 버튼 클릭 이벤트 리스너 등록 (옵션 선택을 위해 상세 페이지로 안내)
     addToCartButtons.forEach((button) => {
         button.addEventListener("click", (event) => {
-            const productName = button.getAttribute("data-name");
-            const productPrice = Number(button.getAttribute("data-price")).toLocaleString();
-
-            // 장바구니 개수 증가 및 로컬스토리지 저장
-            cartCount += 1;
-            localStorage.setItem("vibe_cart_count", cartCount);
-
-            // 네비게이션 바 뱃지 업데이트 및 애니메이션
-            if (cartCountBadge) {
-                cartCountBadge.textContent = cartCount;
-                cartCountBadge.classList.add("badge-bounce");
-                setTimeout(() => {
-                    cartCountBadge.classList.remove("badge-bounce");
-                }, 300);
-            }
-
-            // 토스트 알림 메시지 띄우기
-            if (cartToast && toastMessage) {
-                toastMessage.innerHTML = `<strong>${productName}</strong> (${productPrice}원) 상품이 장바구니에 담겼습니다! 🛒`;
-                cartToast.show();
+            const productId = button.getAttribute("data-id");
+            if (productId) {
+                // 옵션(색상/사이즈) 선택 필수이므로 상품 상세 페이지로 이동
+                window.location.href = `/products/${productId}`;
             }
         });
     });
