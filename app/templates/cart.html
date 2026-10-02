@@ -4,6 +4,35 @@
 <div class="container mt-5 mb-5">
     <h1 class="mb-4">🛒 장바구니</h1>
 
+    <!-- 안내 메시지 및 에러 배너 (품절 안내, 리다이렉트 안내 등) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show mb-4 shadow-sm" role="alert">
+                    <i class="fas {% if category == 'danger' or category == 'error' %}fa-exclamation-triangle text-danger{% elif category == 'success' %}fa-check-circle text-success{% else %}fa-info-circle text-warning{% endif %} me-2"></i>
+                    <strong>{{ message }}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if request.args.get('error') %}
+        <div class="alert alert-danger alert-dismissible fade show mb-4 shadow-sm" role="alert">
+            <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+            <strong>{{ request.args.get('error') }}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+
+    {% if request.args.get('warning') %}
+        <div class="alert alert-warning alert-dismissible fade show mb-4 shadow-sm" role="alert">
+            <i class="fas fa-exclamation-circle text-warning me-2"></i>
+            <strong>{{ request.args.get('warning') }}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+
     <!-- 장바구니 비어있음 -->
     <div id="emptyCartContainer" class="text-center" style="display: none;">
         <div class="mb-4">
